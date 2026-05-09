@@ -57,42 +57,192 @@ export const liveFeed = [
   { t: "11m ago",  text: "Hypothesis updated: Body relocation likely (C-2043)", tag: "ai"     },
 ];
 
-// Investigation graph for Case C-2041
-export const caseGraph = {
+// ─── Forensic Investigation Graph for Case C-2041 ───────────────────────────
+export type NodeZone = "victim" | "forensic" | "suspect" | "timeline" | "environmental";
+export type RelationType =
+  | "dna" | "suspicious" | "confirmed" | "weak"
+  | "timeline" | "behavioral" | "financial" | "environmental";
+
+export interface ForensicNode {
+  id: string; zone: NodeZone; type: string; label: string;
+  sublabel?: string; meta?: string; confidence?: number;
+  riskLevel?: "critical" | "high" | "medium" | "low";
+  criminalCount?: number; activityTag?: string;
+  todRange?: string; causeOfDeath?: string; autopsyStatus?: string;
+  danger?: boolean; aiInsight?: string; x: number; y: number;
+}
+
+export interface ForensicEdge {
+  id: string; source: string; target: string;
+  label: string; relationType: RelationType; confidence: number;
+  timestamp?: string; source_ref?: string; reasoning?: string; danger?: boolean;
+}
+
+export const caseGraph: { nodes: ForensicNode[]; edges: ForensicEdge[] } = {
   nodes: [
-    { id: "victim-1",   type: "victim",   label: "R. Suresh (V)",       meta: "Age 34 · Male",         x: 480, y: 60  },
-    { id: "suspect-1",  type: "suspect",  label: "S-118 'Vetri'",       meta: "Confidence 87%",        x: 220, y: 200, danger: true },
-    { id: "suspect-2",  type: "suspect",  label: "S-204 'Manoj'",       meta: "Confidence 54%",        x: 760, y: 200 },
-    { id: "witness-1",  type: "witness",  label: "Anandhi K.",          meta: "Stall owner",           x: 100, y: 380 },
-    { id: "witness-2",  type: "witness",  label: "Auto driver T.",      meta: "Drop near scene",       x: 880, y: 380 },
-    { id: "loc-1",      type: "location", label: "Central Station E-4", meta: "13.083, 80.275",        x: 480, y: 240 },
-    { id: "cctv-1",     type: "cctv",     label: "CCTV-CHN-0412",       meta: "20:42 · 6 frames",      x: 320, y: 380 },
-    { id: "cctv-2",     type: "cctv",     label: "CCTV-CHN-0418",       meta: "20:48 · timestamp ⚠",   x: 640, y: 380, danger: true },
-    { id: "phone-1",    type: "phone",    label: "+91 98xxx 12 (V)",    meta: "Last ping 20:51",       x: 480, y: 480 },
-    { id: "phone-2",    type: "phone",    label: "+91 90xxx 88 (S1)",   meta: "Tower overlap",         x: 220, y: 480 },
-    { id: "vehicle-1",  type: "vehicle",  label: "TN-09-AC-4421",       meta: "White hatchback",       x: 760, y: 480 },
-    { id: "weapon-1",   type: "weapon",   label: "Blunt object",        meta: "Recovered",             x: 1000, y: 60  },
-    { id: "autopsy-1",  type: "autopsy",  label: "Autopsy A-2041",      meta: "TOD 19:30–21:00",       x: 60,  y: 60  },
-    { id: "dna-1",      type: "dna",      label: "DNA Sample D-77",     meta: "Match 99.2%",           x: 60,  y: 200 },
-    { id: "txn-1",      type: "txn",      label: "UPI ₹40,000",         meta: "20:22 to S1",           x: 1000, y: 200 },
+    // CENTER
+    { id: "victim-1", zone: "victim", type: "victim", label: "R. Suresh", sublabel: "Victim · Age 34 · Male",
+      todRange: "19:30 – 21:00", causeOfDeath: "Blunt force trauma (occipital)",
+      autopsyStatus: "Completed", confidence: 76,
+      aiInsight: "Primary victim. TOD window conflicts with witness statements. Body relocation likely based on livor mortis.",
+      x: 0, y: 0 },
+
+    // SUSPECTS (right)
+    { id: "suspect-1", zone: "suspect", type: "suspect", label: "Vetri (S-118)", sublabel: "Drug supplier · Prior record",
+      meta: "DNA match 99.2% · 3 harassment complaints",
+      confidence: 87, riskLevel: "critical", criminalCount: 4, activityTag: "DNA Match + Drug Connection",
+      aiInsight: "DNA found at scene matches S-118 with 99.2% certainty. Financial transfer of ₹40,000 on same night. Primary suspect.",
+      danger: true, x: 420, y: -80 },
+    { id: "suspect-2", zone: "suspect", type: "suspect", label: "Manoj (S-204)", sublabel: "Last seen near TOD window",
+      meta: "Prior criminal record · CCTV sighting 20:48",
+      confidence: 54, riskLevel: "high", criminalCount: 2, activityTag: "Seen Near Crime Scene",
+      aiInsight: "S-204 was captured on CCTV-0418 near the scene within the TOD window. Witness corroborates sighting at 22:10.",
+      x: 420, y: 100 },
+    { id: "phone-2", zone: "suspect", type: "phone", label: "+91 90xxx 88 (S1)", sublabel: "Suspect phone",
+      meta: "Tower overlap with victim · 4 days prior overlap", confidence: 81,
+      aiInsight: "S-118's phone pinged the same tower as victim's during TOD window — placing them within 500m.",
+      x: 560, y: 20 },
+    { id: "txn-1", zone: "suspect", type: "txn", label: "UPI ₹40,000 Transfer", sublabel: "Victim → S-118 · 20:22",
+      meta: "Financial motive indicator", confidence: 88,
+      aiInsight: "₹40,000 UPI transfer from victim to S-118 at 20:22 — 30 mins before estimated TOD. Establishes financial motive.",
+      danger: true, x: 560, y: 160 },
+
+    // FORENSIC (left)
+    { id: "dna-1", zone: "forensic", type: "dna", label: "DNA Sample D-77", sublabel: "Match 99.2% — S-118",
+      meta: "Collected: crime scene · Occipital blood", confidence: 99,
+      aiInsight: "DNA from occipital wound matches S-118 at 99.2% — strongest physical evidence linking suspect to victim.",
+      x: -420, y: -80 },
+    { id: "autopsy-1", zone: "forensic", type: "autopsy", label: "Autopsy A-2041", sublabel: "Blunt force · Occipital",
+      meta: "Livor mortis inconsistent ⚠ · Defensive injuries", confidence: 76,
+      aiInsight: "Livor mortis fixed pattern inconsistent with recovery position — strongly indicates post-mortem body relocation.",
+      x: -560, y: 20 },
+    { id: "tox-1", zone: "forensic", type: "toxicology", label: "Toxicology T-2041", sublabel: "Diazepam trace · 0.04 BAC",
+      meta: "Sedative trace detected", confidence: 82,
+      aiInsight: "Trace diazepam in blood — possible administration prior to assault. Indicates possible drugging.",
+      x: -420, y: 80 },
+    { id: "print-1", zone: "forensic", type: "fingerprint", label: "Fingerprints FP-09", sublabel: "Partial match recovered",
+      meta: "Right palm · blunt object handle", confidence: 68,
+      aiInsight: "Partial fingerprint on recovered blunt object handle — labs running enhancement. 68% confidence partial.",
+      x: -560, y: 160 },
+
+    // TIMELINE (top)
+    { id: "cctv-1", zone: "timeline", type: "cctv", label: "CCTV-CHN-0412", sublabel: "20:42 · 6 frames",
+      meta: "Altercation visible — E-Gate 4", confidence: 90,
+      aiInsight: "CCTV at E-Gate 4 captures altercation at 20:42. Victim and S-118 visible in 6 clear frames.",
+      x: -150, y: -300 },
+    { id: "cctv-2", zone: "timeline", type: "cctv", label: "CCTV-CHN-0418", sublabel: "20:48 · Timestamp ⚠",
+      meta: "+6 min drift from station clock", confidence: 47,
+      aiInsight: "CCTV-0418 has a +6 minute timestamp drift from station master clock — creates timeline anomaly, under forensic review.",
+      danger: true, x: 150, y: -300 },
+    { id: "tod-1", zone: "timeline", type: "timeline", label: "TOD Estimation", sublabel: "Window: 19:30 – 21:00",
+      meta: "Vitreous K+ 6.1 mmol/L · Rigor onset", confidence: 76,
+      aiInsight: "TOD 19:30–21:00 based on vitreous K+ 6.1 mmol/L, rigor, and algor mortis data.",
+      x: 0, y: -360 },
+    { id: "weapon-1", zone: "timeline", type: "weapon", label: "Blunt Object (Recovered)", sublabel: "Iron rod · 600g",
+      meta: "Recovered 100m from scene · Partial print", confidence: 74,
+      aiInsight: "Iron rod recovered 100m from Central Station. Blood group matches victim. Partial print under enhancement.",
+      danger: true, x: -300, y: -240 },
+
+    // ENVIRONMENTAL (bottom)
+    { id: "witness-1", zone: "environmental", type: "witness", label: "Anandhi K.", sublabel: "Stall owner · Reliable",
+      meta: "Saw victim at 20:14 near E-Gate 4", confidence: 92,
+      aiInsight: "Anandhi K. confirms victim at 20:14 near E-Gate 4. Consistent with CCTV-0412.",
+      x: -200, y: 300 },
+    { id: "witness-2", zone: "environmental", type: "witness", label: "Auto Driver T.", sublabel: "Drop near scene · Inconsistent",
+      meta: "Places S-204 at 22:10 — phone was off-tower ⚠", confidence: 58,
+      aiInsight: "Witness places S-204 at scene at 22:10, but S-204's phone showed no tower activity — contradictory.",
+      danger: true, x: 200, y: 300 },
+    { id: "weather-1", zone: "environmental", type: "weather", label: "Weather Log", sublabel: "Apr 22 · 20:00–22:00",
+      meta: "Overcast · Low visibility · 27°C", confidence: 95,
+      aiInsight: "Overcast sky and low visibility may have impaired witness sightlines and caused CCTV degradation.",
+      x: 0, y: 380 },
+    { id: "family-1", zone: "environmental", type: "family", label: "Family Statement", sublabel: "Wife: K. Meena",
+      meta: "Last contact 18:05 · No prior threats reported", confidence: 80,
+      aiInsight: "Victim's wife reports last contact at 18:05. He mentioned meeting 'an old contact' — may be S-118.",
+      x: -350, y: 360 },
   ],
+
   edges: [
-    { id: "e1",  source: "victim-1",  target: "loc-1" },
-    { id: "e2",  source: "suspect-1", target: "loc-1", danger: true },
-    { id: "e3",  source: "suspect-2", target: "loc-1" },
-    { id: "e4",  source: "loc-1",     target: "cctv-1" },
-    { id: "e5",  source: "loc-1",     target: "cctv-2", danger: true },
-    { id: "e6",  source: "witness-1", target: "cctv-1" },
-    { id: "e7",  source: "witness-2", target: "cctv-2" },
-    { id: "e8",  source: "victim-1",  target: "phone-1" },
-    { id: "e9",  source: "suspect-1", target: "phone-2" },
-    { id: "e10", source: "phone-1",   target: "phone-2", danger: true },
-    { id: "e11", source: "suspect-2", target: "vehicle-1" },
-    { id: "e12", source: "victim-1",  target: "weapon-1" },
-    { id: "e13", source: "victim-1",  target: "autopsy-1" },
-    { id: "e14", source: "suspect-1", target: "dna-1", danger: true },
-    { id: "e15", source: "victim-1",  target: "txn-1" },
-    { id: "e16", source: "txn-1",     target: "suspect-1", danger: true },
+    // Victim ↔ Suspects
+    { id: "e-v-s1-dna", source: "victim-1", target: "suspect-1",
+      label: "DNA Match", relationType: "dna", confidence: 99,
+      timestamp: "Lab report 23 Apr", source_ref: "DNA Sample D-77",
+      reasoning: "Occipital blood matched S-118 at 99.2% via STR profiling.", danger: true },
+    { id: "e-v-s1-fin", source: "victim-1", target: "txn-1",
+      label: "Financial Dispute", relationType: "financial", confidence: 88,
+      timestamp: "20:22, Apr 22", source_ref: "UPI Statement Apr-26",
+      reasoning: "₹40,000 transferred from victim to S-118 before TOD — financial motive.", danger: true },
+    { id: "e-txn-s1", source: "txn-1", target: "suspect-1",
+      label: "Received Payment", relationType: "financial", confidence: 88,
+      timestamp: "20:22, Apr 22", source_ref: "UPI Statement",
+      reasoning: "S-118 received ₹40,000 from victim on the night of murder.", danger: true },
+    { id: "e-v-s2", source: "victim-1", target: "suspect-2",
+      label: "Last Seen With", relationType: "suspicious", confidence: 54,
+      timestamp: "20:48 CCTV-0418", source_ref: "CCTV-CHN-0418",
+      reasoning: "S-204 seen near victim at 20:48 per CCTV, within TOD window." },
+    { id: "e-v-phone2", source: "victim-1", target: "phone-2",
+      label: "Phone Tower Overlap", relationType: "behavioral", confidence: 81,
+      timestamp: "20:22–20:51", source_ref: "Phone dump +9198xxx12",
+      reasoning: "Victim and S-118 phones on same cell tower 20:22–20:51 — within 500m.", danger: true },
+    // Victim ↔ Forensic
+    { id: "e-v-dna", source: "victim-1", target: "dna-1",
+      label: "Autopsy Indicator", relationType: "dna", confidence: 99,
+      timestamp: "Lab report 23 Apr", source_ref: "DNA Sample D-77",
+      reasoning: "DNA from occipital wound links directly to victim's case." },
+    { id: "e-v-autopsy", source: "victim-1", target: "autopsy-1",
+      label: "Cause of Death", relationType: "confirmed", confidence: 76,
+      timestamp: "Autopsy 23 Apr", source_ref: "Autopsy A-2041",
+      reasoning: "COD: blunt force trauma occipital. Livor mortis flags body relocation." },
+    { id: "e-v-tox", source: "victim-1", target: "tox-1",
+      label: "Toxicology Finding", relationType: "confirmed", confidence: 82,
+      timestamp: "Lab report 23 Apr", source_ref: "Tox Screen T-2041",
+      reasoning: "Trace diazepam in victim's blood suggests possible pre-assault sedation." },
+    { id: "e-v-print", source: "victim-1", target: "print-1",
+      label: "Fingerprint Evidence", relationType: "weak", confidence: 68,
+      timestamp: "Scene collection 22 Apr", source_ref: "FP-09",
+      reasoning: "Partial print on weapon handle — inconclusive until lab confirmation." },
+    { id: "e-dna-s1", source: "dna-1", target: "suspect-1",
+      label: "DNA Match", relationType: "dna", confidence: 99,
+      timestamp: "Lab report 23 Apr", source_ref: "DNA Sample D-77",
+      reasoning: "STR profiling confirms S-118's DNA matches scene sample at 99.2%.", danger: true },
+    // Victim ↔ Timeline
+    { id: "e-v-cctv1", source: "victim-1", target: "cctv-1",
+      label: "Captured at 20:42", relationType: "timeline", confidence: 90,
+      timestamp: "20:42 Apr 22", source_ref: "CCTV-CHN-0412",
+      reasoning: "Victim visible in 6 CCTV frames at E-Gate 4 — altercation visible." },
+    { id: "e-v-cctv2", source: "victim-1", target: "cctv-2",
+      label: "Timestamp Anomaly", relationType: "timeline", confidence: 47,
+      timestamp: "20:48 (disputed)", source_ref: "CCTV-CHN-0418",
+      reasoning: "CCTV-0418 shows victim but has +6 min drift — forensic review ongoing.", danger: true },
+    { id: "e-v-tod", source: "victim-1", target: "tod-1",
+      label: "TOD Estimation", relationType: "timeline", confidence: 76,
+      timestamp: "Autopsy 23 Apr", source_ref: "Autopsy A-2041",
+      reasoning: "TOD via vitreous K+ 6.1 mmol/L, rigor mortis indicators." },
+    { id: "e-v-weapon", source: "victim-1", target: "weapon-1",
+      label: "Cause of Death Link", relationType: "confirmed", confidence: 74,
+      timestamp: "Recovery 22 Apr 23:00", source_ref: "Evidence EV-008",
+      reasoning: "Iron rod blood group matches victim. Impact consistent with occipital fracture.", danger: true },
+    // Victim ↔ Environmental
+    { id: "e-v-w1", source: "victim-1", target: "witness-1",
+      label: "Witnessed Alive", relationType: "environmental", confidence: 92,
+      timestamp: "20:14 Apr 22", source_ref: "Statement W-1",
+      reasoning: "Reliable eyewitness confirms victim alive near E-Gate 4 at 20:14." },
+    { id: "e-v-w2", source: "victim-1", target: "witness-2",
+      label: "Sighting Near TOD", relationType: "weak", confidence: 58,
+      timestamp: "22:10 (disputed)", source_ref: "Statement W-2",
+      reasoning: "Witness places S-204 at scene at 22:10, inconsistent with phone data.", danger: true },
+    { id: "e-v-family", source: "victim-1", target: "family-1",
+      label: "Last Known Contact", relationType: "environmental", confidence: 80,
+      timestamp: "18:05 Apr 22", source_ref: "Family Statement",
+      reasoning: "Victim's wife last spoke at 18:05. He mentioned meeting 'an old contact'." },
+    { id: "e-v-weather", source: "victim-1", target: "weather-1",
+      label: "Environmental Context", relationType: "environmental", confidence: 95,
+      timestamp: "20:00–22:00 Apr 22", source_ref: "Weather Log",
+      reasoning: "Overcast conditions reduced visibility, affecting CCTV and witness accuracy." },
+    { id: "e-s2-w2", source: "suspect-2", target: "witness-2",
+      label: "Contradictory Sighting", relationType: "suspicious", confidence: 58,
+      timestamp: "22:10 (disputed)", source_ref: "Statement W-2",
+      reasoning: "Witness claims S-204 at scene at 22:10 but phone shows no tower activity.", danger: true },
   ],
 };
 

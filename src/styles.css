@@ -217,3 +217,65 @@
 .leaflet-container { background: oklch(0.12 0.03 260); }
 .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
 .leaflet-control-attribution { display: none; }
+
+/* ─── Forensic Graph Animations ─────────────────────────────────────────────── */
+
+/* Victim center node — dual concentric pulse rings */
+@keyframes victim-pulse-inner {
+  0%   { box-shadow: 0 0 0 0 rgba(34,211,238,0.65), 0 0 30px rgba(34,211,238,0.4); }
+  70%  { box-shadow: 0 0 0 18px rgba(34,211,238,0), 0 0 30px rgba(34,211,238,0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(34,211,238,0), 0 0 30px rgba(34,211,238,0.4); }
+}
+.animate-victim-pulse { animation: victim-pulse-inner 2.4s ease-out infinite; }
+
+/* Outer slower ring overlay */
+@keyframes victim-ring-outer {
+  0%   { box-shadow: 0 0 0 0 rgba(34,211,238,0.30); opacity: 1; }
+  80%  { box-shadow: 0 0 0 36px rgba(34,211,238,0); opacity: 0; }
+  100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); opacity: 0; }
+}
+.animate-victim-ring-outer { animation: victim-ring-outer 3.5s ease-out infinite 0.8s; }
+
+/* Suspect danger throb */
+@keyframes suspect-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.7), 0 0 20px rgba(239,68,68,0.35); }
+  70%  { box-shadow: 0 0 0 14px rgba(239,68,68,0), 0 0 20px rgba(239,68,68,0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0), 0 0 20px rgba(239,68,68,0.35); }
+}
+.animate-suspect-pulse { animation: suspect-pulse 1.8s ease-out infinite; }
+
+/* Forensic edge animated dash */
+@keyframes forensic-dash {
+  from { stroke-dashoffset: 60; }
+  to   { stroke-dashoffset: 0; }
+}
+.forensic-edge-animated {
+  animation: forensic-dash 1.6s linear infinite;
+}
+
+/* Edge label */
+.forensic-edge-label {
+  pointer-events: all;
+}
+
+/* React Flow overrides for forensic graph */
+.react-flow__renderer { background: transparent; }
+.react-flow__background { opacity: 0.35; }
+.react-flow__attribution { display: none; }
+.react-flow__controls {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.react-flow__controls-button {
+  background: rgba(15,20,40,0.85) !important;
+  border: 1px solid rgba(100,180,255,0.22) !important;
+  color: rgba(200,230,255,0.9) !important;
+  border-radius: 6px !important;
+  margin-bottom: 3px !important;
+}
+.react-flow__controls-button:hover {
+  background: rgba(25,35,60,0.95) !important;
+}
+.react-flow__minimap { border-radius: 10px !important; overflow: hidden; }
+
