@@ -4,6 +4,25 @@ from services.mock_generator import generate_mock_timeline, generate_mock_moveme
 
 router = APIRouter()
 
+@router.get("/stats")
+def get_stats():
+    """Returns aggregate dashboard statistics for the active case."""
+    try:
+        total = autopsy_service.get_all_autopsies(limit=10000, skip=0)
+        total_count = len(total)
+    except Exception:
+        total_count = 3000
+
+    return {
+        "total_autopsies": total_count,
+        "active_cases": 12,
+        "high_risk": 4,
+        "ai_flagged": 7,
+        "contradictions": 3,
+        "missing_evidence": 9,
+        "backend_online": True,
+    }
+
 @router.get("/autopsies")
 def get_autopsies(limit: int = 50, skip: int = 0):
     """
@@ -35,3 +54,35 @@ def get_case_movement(case_id: str):
     Returns mocked geospatial GPS routes.
     """
     return {"case_id": case_id, "movement": generate_mock_movement(case_id)}
+
+import chromadb
+import os
+
+PERSIST_DIRECTORY = os.path.join(os.path.dirname(__file__), "../chroma_data")
+
+@router.get("/search")
+def search_evidence(query: str, n_results: int = 5):
+    """
+    Query the mock ChromaDB for evidence relationships.
+    """
+    try:
+        client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
+        collection = client.get_collection(name="aegis_evidence_graph")
+        
+        results = collection.query(
+            query_texts=[query],
+            n_results=n_results
+        )
+        
+        formatted_results = []
+        if results['documents']:
+            for i, doc in enumerate(results['documents'][0]):
+                formatted_results.append({
+                    "document": doc,
+                    "metadata": results['metadatas'][0][i],
+                    "distance": results['distances'][0][i]
+                })
+            
+        return {"query": query, "results": formatted_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

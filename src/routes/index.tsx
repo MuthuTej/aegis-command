@@ -7,7 +7,8 @@ import { CaseTable } from "@/components/aegis/CaseTable";
 import {
   FolderOpen, ShieldAlert, Stethoscope, Sparkles, AlertTriangle, FileQuestion, Upload
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { fetchStats, type StatsResponse } from "@/lib/api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,6 +23,13 @@ export const Route = createFileRoute("/")({
 function Index() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+
+  useEffect(() => {
+    fetchStats()
+      .then(setStats)
+      .catch(() => { /* backend offline — keep static values */ });
+  }, []);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,12 +68,12 @@ function Index() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-          <StatCard label="Active Cases"        value={142} icon={FolderOpen}    sub="↑ 8 today"     trend="+5.2% vs week" />
-          <StatCard label="High Risk Cases"     value={37}  icon={ShieldAlert}   tone="danger"  sub="3 critical"   trend="2 escalated" />
-          <StatCard label="Autopsy Pending"     value={19}  icon={Stethoscope}   tone="warn"    sub="4 overdue"    trend="avg 36h" />
-          <StatCard label="AI Flagged Cases"    value={26}  icon={Sparkles}      tone="neon-2"  sub="auto-tagged"  trend="confidence ↑" />
-          <StatCard label="Contradictions"      value={58}  icon={AlertTriangle} tone="danger"  sub="across cases" trend="3 new today" />
-          <StatCard label="Missing Evidence"    value={11}  icon={FileQuestion}  tone="warn"    sub="DNA / CCTV"   trend="2 requested" />
+          <StatCard label="Active Cases"     value={stats?.active_cases     ?? 142} icon={FolderOpen}    sub="↑ 8 today"     trend="+5.2% vs week" />
+          <StatCard label="High Risk Cases"  value={stats?.high_risk        ?? 37}  icon={ShieldAlert}   tone="danger"  sub="3 critical"   trend="2 escalated" />
+          <StatCard label="Total Autopsies"  value={stats?.total_autopsies  ?? 19}  icon={Stethoscope}   tone="warn"    sub="in dataset"   trend="avg 36h" />
+          <StatCard label="AI Flagged"       value={stats?.ai_flagged       ?? 26}  icon={Sparkles}      tone="neon-2"  sub="auto-tagged"  trend="confidence ↑" />
+          <StatCard label="Contradictions"   value={stats?.contradictions   ?? 58}  icon={AlertTriangle} tone="danger"  sub="across cases" trend="3 new today" />
+          <StatCard label="Missing Evidence" value={stats?.missing_evidence ?? 11}  icon={FileQuestion}  tone="warn"    sub="DNA / CCTV"   trend="2 requested" />
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

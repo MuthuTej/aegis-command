@@ -43,12 +43,32 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
     { who: "ai", text: "AEGIS Copilot online. I have indexed 24 evidence items across C-2041. Ask me anything." },
   ]);
 
-  const send = useCallback((text: string) => {
+  const send = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t) return;
-    const reply = REPLIES[t] ?? REPLIES.default;
-    setLog((l) => [...l, { who: "user", text: t }, { who: "ai", text: reply }]);
+
+    // Add user message immediately
+    setLog((l) => [...l, { who: "user", text: t }]);
     setInput("");
+
+    try {
+      const res = await fetch(`/api/search?query=${encodeURIComponent(t)}`);
+      const data = await res.json();
+      
+      let reply = "";
+      if (data.results && data.results.length > 0) {
+        reply = "Here is the relevant evidence I retrieved from the vector database:\n\n";
+        data.results.slice(0, 3).forEach((r: any, idx: number) => {
+          reply += `[${r.metadata.type?.toUpperCase() || 'UNKNOWN'} | Confidence: ${r.metadata.confidence || 0}%]\n${r.document}\n\n`;
+        });
+      } else {
+        reply = "I couldn't find any highly relevant evidence in the database for that query.";
+      }
+      
+      setLog((l) => [...l, { who: "ai", text: reply.trim() }]);
+    } catch (e) {
+      setLog((l) => [...l, { who: "ai", text: "Error connecting to the AEGIS Vector Database. Please ensure the backend is running." }]);
+    }
   }, []);
 
   useImperativeHandle(ref, () => ({ send }), [send]);
@@ -66,7 +86,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
           </div>
         </div>
         <Badge variant="secondary" className="hidden border border-primary/35 bg-secondary/40 sm:inline-flex">
-          Live
+          Live DB
         </Badge>
       </div>
       {variant === "floating" ? (
@@ -83,10 +103,10 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
         <div key={i} className={m.who === "user" ? "ml-auto max-w-[90%]" : "mr-auto max-w-[92%]"}>
           <div
             className={[
-              "rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
+              "rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
               m.who === "user"
                 ? "bg-primary/18 text-foreground ring-1 ring-primary/20"
-                : "border border-primary/30 bg-secondary/35 font-mono text-[12.5px] text-foreground/95",
+                : "border border-primary/30 bg-secondary/35 font-mono text-[12px] text-foreground/95",
             ].join(" ")}
           >
             {m.who === "ai" && (

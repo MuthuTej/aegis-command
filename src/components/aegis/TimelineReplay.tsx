@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { fetchTimeline, type TimelineEvent } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, ChevronLeft, ChevronRight,
@@ -588,13 +589,47 @@ const BOTTOM_LEGEND = [
   { label: "Anomaly", color: "bg-orange-500" },
 ];
 
+function mapSeverity(s: string): ReplayStep["severity"] | undefined {
+  const m: Record<string, ReplayStep["severity"]> = {
+    low: "normal", medium: "suspicious", high: "suspicious", critical: "critical",
+    normal: "normal", suspicious: "suspicious",
+  };
+  return m[s];
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export function TimelineReplay() {
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [backendEvents, setBackendEvents] = useState<TimelineEvent[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Fetch backend timeline and merge into STEPS (preserving nodes/edges/special)
+  useEffect(() => {
+    fetchTimeline("C-2041")
+      .then((r) => setBackendEvents(r.timeline))
+      .catch(() => { /* keep static STEPS */ });
+  }, []);
+
+  const steps = useMemo<ReplayStep[]>(() => {
+    if (backendEvents.length === 0) return STEPS;
+    const byId = new Map(backendEvents.map((e) => [Number(e.id), e]));
+    return STEPS.map((s) => {
+      const b = byId.get(s.id);
+      if (!b) return s;
+      return {
+        ...s,
+        time:        b.time        ?? s.time,
+        title:       b.title       ?? s.title,
+        description: b.description ?? s.description,
+        confidence:  b.confidence  ?? s.confidence,
+        severity:    mapSeverity(b.severity) ?? s.severity,
+        aiInsight:   b.aiInsight   ?? s.aiInsight,
+      };
+    });
+  }, [backendEvents]);
 
   // Auto-scroll to current row
   useEffect(() => {
@@ -607,15 +642,15 @@ export function TimelineReplay() {
     const delay = 2200 / speed;
     const timer = setInterval(() => {
       setCurrent(prev => {
-        if (prev >= STEPS.length - 1) { setPlaying(false); return prev; }
+        if (prev >= steps.length - 1) { setPlaying(false); return prev; }
         return prev + 1;
       });
     }, delay);
     return () => clearInterval(timer);
-  }, [playing, speed]);
+  }, [playing, speed, steps.length]);
 
-  const step = STEPS[current];
-  const progress = ((current + 1) / STEPS.length) * 100;
+  const step = steps[current];
+  const progress = ((current + 1) / steps.length) * 100;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-white/8 bg-[#060a18]" style={{ height: "760px" }}>
@@ -667,7 +702,7 @@ export function TimelineReplay() {
               className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => { setCurrent(s => Math.min(s + 1, STEPS.length - 1)); setPlaying(false); }}
+            <button onClick={() => { setCurrent(s => Math.min(s + 1, steps.length - 1)); setPlaying(false); }}
               className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -687,7 +722,7 @@ export function TimelineReplay() {
 
       {/* ── Rows ── */}
       <div ref={bodyRef} className="flex-1 overflow-y-auto">
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const ec = EVENT_COLORS[s.eventType];
           const isActive = i === current;
           const isPast = i < current;
@@ -766,7 +801,7 @@ export function TimelineReplay() {
 
       {/* ── Progress Bar ── */}
       <div className="shrink-0 border-t border-white/6 px-4 py-1.5 flex items-center gap-3 bg-slate-950/50">
-        <span className="font-mono text-[9px] text-slate-600">Step {current + 1} / {STEPS.length}</span>
+        <span className="font-mono text-[9px] text-slate-600">Step {current + 1} / {steps.length}</span>
         <div className="flex-1 h-1 bg-slate-900 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500"
