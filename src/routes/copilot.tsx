@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Shell } from "@/components/aegis/Shell";
 import { Copilot, type CopilotHandle } from "@/components/aegis/Copilot";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,24 @@ const BRIEF_PROMPTS = [
   },
 ] as const;
 
+type CopilotSearch = { q?: string };
+
 function CopilotRoutePage() {
+  const { q } = Route.useSearch();
   const copilotRef = useRef<CopilotHandle>(null);
+  const lastSent = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const trimmed = q?.trim();
+    if (!trimmed) {
+      lastSent.current = undefined;
+      return;
+    }
+    if (lastSent.current === trimmed) return;
+    lastSent.current = trimmed;
+    const id = requestAnimationFrame(() => copilotRef.current?.send(trimmed));
+    return () => cancelAnimationFrame(id);
+  }, [q]);
 
   return (
     <Shell>
@@ -126,6 +142,9 @@ function CopilotRoutePage() {
 }
 
 export const Route = createFileRoute("/copilot")({
+  validateSearch: (raw: Record<string, unknown>): CopilotSearch => ({
+    q: typeof raw.q === "string" && raw.q.trim() ? raw.q.trim() : undefined,
+  }),
   head: () => ({
     meta: [{ title: "AI Copilot — AEGIS" }, { name: "description", content: "Holographic investigation assistant." }],
   }),
