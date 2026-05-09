@@ -1,0 +1,5 @@
+fastapi>=0.103.1
+uvicorn>=0.23.2
+pandas>=2.2.0
+faker>=19.3.0
+pydantic>=2.3.0
