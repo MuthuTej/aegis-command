@@ -396,9 +396,14 @@ export const movementPath = [
   { lat: 13.0560, lng: 80.2620, t: "18:10", who: "victim" },
   { lat: 13.0820, lng: 80.2730, t: "20:14", who: "victim" },
   { lat: 13.0825, lng: 80.2750, t: "20:42", who: "victim" },
-  { lat: 13.0900, lng: 80.2800, t: "20:55", who: "suspect" },
-  { lat: 13.0825, lng: 80.2750, t: "20:42", who: "suspect" },
-  { lat: 13.0700, lng: 80.2700, t: "21:25", who: "suspect" },
+  
+  { lat: 13.0900, lng: 80.2800, t: "20:55", who: "suspect-1" },
+  { lat: 13.0825, lng: 80.2750, t: "20:42", who: "suspect-1" },
+  { lat: 13.0700, lng: 80.2700, t: "21:25", who: "suspect-1" },
+
+  { lat: 13.0650, lng: 80.2650, t: "19:00", who: "suspect-2" },
+  { lat: 13.0750, lng: 80.2700, t: "20:10", who: "suspect-2" },
+  { lat: 13.0825, lng: 80.2750, t: "20:42", who: "suspect-2" },
 ];
 
 export const similarCases = [

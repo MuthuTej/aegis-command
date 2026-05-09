@@ -7,7 +7,7 @@ export const Route = createFileRoute("/timeline")({
   head: () => ({ meta: [{ title: "Timeline Replay — AEGIS" }, { name: "description", content: "Cinematic timeline & movement replay." }] }),
   component: () => (
     <Shell>
-      <div className="grid gap-4 p-5 lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-5">
         <TimelineReplay />
         <MovementMap />
       </div>

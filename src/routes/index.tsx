@@ -5,8 +5,9 @@ import { RiskMap } from "@/components/aegis/RiskMap";
 import { LiveFeed } from "@/components/aegis/LiveFeed";
 import { CaseTable } from "@/components/aegis/CaseTable";
 import {
-  FolderOpen, ShieldAlert, Stethoscope, Sparkles, AlertTriangle, FileQuestion,
+  FolderOpen, ShieldAlert, Stethoscope, Sparkles, AlertTriangle, FileQuestion, Upload
 } from "lucide-react";
+import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,9 +20,45 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadMessage(`Successfully parsed autopsy report: ${file.name}`);
+      setTimeout(() => setUploadMessage(null), 5000);
+      // Reset the input so the same file can be uploaded again if needed
+      e.target.value = "";
+    }
+  };
+
   return (
     <Shell>
       <div className="space-y-5 p-5">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-wider text-white uppercase">Command Dashboard</h1>
+          <div className="flex items-center gap-4">
+            {uploadMessage && (
+              <span className="text-sm font-semibold text-emerald-400 animate-pulse">{uploadMessage}</span>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".txt,.doc,.docx,.pdf"
+              className="hidden"
+              onChange={handleUpload}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg bg-cyan-600/20 border border-cyan-500/50 px-4 py-2 text-sm font-bold text-cyan-300 transition-colors hover:bg-cyan-500/30"
+            >
+              <Upload className="h-4 w-4" />
+              Add Autopsy Report
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
           <StatCard label="Active Cases"        value={142} icon={FolderOpen}    sub="↑ 8 today"     trend="+5.2% vs week" />
           <StatCard label="High Risk Cases"     value={37}  icon={ShieldAlert}   tone="danger"  sub="3 critical"   trend="2 escalated" />
