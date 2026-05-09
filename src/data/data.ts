@@ -1,4 +1,4 @@
-// Mock investigative data — Tamil Nadu / Chennai based
+// Investigative data — Tamil Nadu / Chennai based
 export type Severity = "low" | "medium" | "high" | "critical";
 
 export interface CaseSummary {

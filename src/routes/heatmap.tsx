@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/aegis/Shell";
 import { RiskMap } from "@/components/aegis/RiskMap";
-import { heatmapZones } from "@/data/mock";
+import { heatmapZones } from "@/data/data";
 
 export const Route = createFileRoute("/heatmap")({
   head: () => ({ meta: [{ title: "Heatmaps — AEGIS" }, { name: "description", content: "Crime risk heatmaps across Tamil Nadu." }] }),

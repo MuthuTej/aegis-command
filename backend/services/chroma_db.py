@@ -4,7 +4,7 @@ import chromadb
 # Ensure chroma stores data locally in a persistent folder
 PERSIST_DIRECTORY = os.path.join(os.path.dirname(__file__), "../chroma_data")
 
-def setup_mock_chromadb():
+def setup_chromadb():
     print(f"Initializing ChromaDB in {PERSIST_DIRECTORY}...")
     
     # 1. Connect to the Persistent Client
@@ -14,7 +14,7 @@ def setup_mock_chromadb():
     # We use get_or_create so we don't crash if it already exists
     collection = client.get_or_create_collection(
         name="aegis_evidence_graph",
-        metadata={"description": "Mock vector DB for the Living Evidence Canvas"}
+        metadata={"description": "Vector DB for the Living Evidence Canvas"}
     )
     
     # 3. Format your new evidence data
@@ -86,7 +86,7 @@ def setup_mock_chromadb():
     print("✅ Database successfully populated with graph relationships!")
     return collection
 
-def query_mock_chromadb(query_text: str, n_results: int = 2):
+def query_chromadb(query_text: str, n_results: int = 2):
     """
     Demonstrates how to semantic search the database.
     """
@@ -108,7 +108,7 @@ def query_mock_chromadb(query_text: str, n_results: int = 2):
 
 if __name__ == "__main__":
     # When you run this file directly, it will setup the DB and run a test query.
-    setup_mock_chromadb()
+    setup_chromadb()
     
-    query_mock_chromadb("What evidence connects the victim to a blunt force trauma?")
-    query_mock_chromadb("Show me the financial transactions involving the primary suspect.")
+    query_chromadb("What evidence connects the victim to a blunt force trauma?")
+    query_chromadb("Show me the financial transactions involving the primary suspect.")

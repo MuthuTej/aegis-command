@@ -1,4 +1,4 @@
-import { autopsy } from "@/data/mock";
+import { autopsy } from "@/data/data";
 import { Activity, Stethoscope } from "lucide-react";
 
 const REGIONS: Record<string, { cx: number; cy: number; rx: number; ry: number }> = {

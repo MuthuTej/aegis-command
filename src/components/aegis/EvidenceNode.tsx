@@ -6,7 +6,7 @@ import {
   ShieldAlert, Activity, MapPin,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { NodeZone } from "@/data/mock";
+import type { NodeZone } from "@/data/data";
 
 // ── Icon + color registry ─────────────────────────────────────────────────────
 const NODE_META: Record<string, { icon: LucideIcon; label: string }> = {

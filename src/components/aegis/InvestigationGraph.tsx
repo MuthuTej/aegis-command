@@ -14,7 +14,7 @@ import {
 import {
   caseGraph, type ForensicNode, type ForensicEdge,
   type RelationType, type NodeZone,
-} from "@/data/mock";
+} from "@/data/data";
 import { EvidenceNode } from "./EvidenceNode";
 
 // ── Extended types ────────────────────────────────────────────────────────────
@@ -876,7 +876,7 @@ function MiniLegend() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function InvestigationGraph({ onSelect }: { onSelect?: (id: string | null) => void }) {
-  // Live state (start from mock, grow dynamically)
+  // Live state (start from case data, grow dynamically)
   const [liveNodes, setLiveNodes] = useState<LiveNode[]>(() => caseGraph.nodes as LiveNode[]);
   const [liveEdges, setLiveEdges] = useState<LiveEdge[]>(() => caseGraph.edges as LiveEdge[]);
 

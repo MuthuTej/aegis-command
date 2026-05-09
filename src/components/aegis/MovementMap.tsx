@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { movementPath } from "@/data/mock";
+import { movementPath } from "@/data/data";
 import { fetchMovement, type MovementPoint } from "@/lib/api";
 
 function buildMap(container: HTMLDivElement, points: MovementPoint[]) {
@@ -40,7 +40,7 @@ function buildMap(container: HTMLDivElement, points: MovementPoint[]) {
   return map;
 }
 
-// Convert old mock format to new MovementPoint format
+// Convert legacy format to MovementPoint format
 function legacyToPoints(path: typeof movementPath): MovementPoint[] {
   return path.map((p) => ({
     lat: p.lat,
@@ -58,7 +58,7 @@ export function MovementMap() {
   useEffect(() => {
     fetchMovement("C-2041")
       .then((r) => setPoints(r.movement))
-      .catch(() => { /* keep mock fallback */ });
+      .catch(() => { /* keep fallback data */ });
   }, []);
 
   useEffect(() => {

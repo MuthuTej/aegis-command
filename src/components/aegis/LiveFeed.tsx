@@ -1,4 +1,4 @@
-import { liveFeed } from "@/data/mock";
+import { liveFeed } from "@/data/data";
 import { motion } from "framer-motion";
 
 const tagColor: Record<string, string> = {

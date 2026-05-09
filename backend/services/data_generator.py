@@ -6,7 +6,7 @@ def _t(h=0, m=0):
     return (_BASE + timedelta(hours=h, minutes=m)).strftime("%H:%M")
 
 
-def generate_mock_timeline(case_id: str):
+def generate_timeline(case_id: str):
     """Full 18-step investigation roadmap for case C-2041."""
     return [
         {
@@ -192,7 +192,7 @@ def generate_mock_timeline(case_id: str):
     ]
 
 
-def generate_mock_movement(case_id: str):
+def generate_movement(case_id: str):
     """GPS routes for victim and suspects — 9 anchor points."""
     return [
         {"lat": 13.0560, "lng": 80.2620, "label": "Victim's Residence", "time": "18:10", "type": "victim"},

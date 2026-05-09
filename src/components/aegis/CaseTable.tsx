@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { cases, type Severity } from "@/data/mock";
+import { cases, type Severity } from "@/data/data";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 
 const sevColor: Record<Severity, string> = {

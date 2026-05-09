@@ -1,4 +1,4 @@
-import { contradictions } from "@/data/mock";
+import { contradictions } from "@/data/data";
 import { AlertTriangle } from "lucide-react";
 
 const sev: Record<string, string> = {

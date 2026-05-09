@@ -1,6 +1,6 @@
 import { Search, Mic, Sparkles, Filter, ChevronDown, Bell } from "lucide-react";
 import { motion } from "framer-motion";
-import { districts } from "@/data/mock";
+import { districts } from "@/data/data";
 
 export function CommandHeader() {
   return (

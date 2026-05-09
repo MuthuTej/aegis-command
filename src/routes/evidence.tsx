@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/aegis/Shell";
-import { evidenceVault } from "@/data/mock";
+import { evidenceVault } from "@/data/data";
 import { Database } from "lucide-react";
 
 const statusColor: Record<string, string> = {

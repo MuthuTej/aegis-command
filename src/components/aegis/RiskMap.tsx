@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import { heatmapZones } from "@/data/mock";
+import { heatmapZones } from "@/data/data";
 
 export function RiskMap() {
   const ref = useRef<HTMLDivElement>(null);
