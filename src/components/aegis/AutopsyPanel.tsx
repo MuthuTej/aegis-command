@@ -1,368 +1,161 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain, Heart, AlertTriangle, CheckCircle2, X,
-  Zap, Shield, Activity, ChevronDown, ChevronUp, FileText,
+  Brain, Heart, AlertTriangle, CheckCircle2, X, Zap,
+  Activity, Eye, Layers, Cpu, Droplets, Bone, Wind,
 } from "lucide-react";
+import anatomyImg from "@/assets/anatomy.jpeg";
 
-// ── Static forensic data ───────────────────────────────────────────────────
-
-const VICTIM = {
-  name: "R. Suresh", age: 34, sex: "Male", height: "174 cm",
-  weight: "69 kg", bmi: "22.8", bmiLabel: "Normal",
-  caseId: "C-2041", reportDate: "26 Apr 2025 · 23:47",
-  pmi: "8 – 10 Hours",
-  causeOfDeath: "Blunt force trauma to occipital region with depressed skull fracture and subdural hemorrhage.",
-  summary: "Multiple traumatic injuries with signs of internal hemorrhage. Livor mortis inconsistency confirms post-mortem relocation. Cause of death: hemorrhagic shock secondary to blunt force trauma.",
-};
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type Sev = "critical" | "high" | "medium" | "low";
+type Layer = "organs" | "skeletal" | "circulatory" | "nervous" | "heatmap";
 
-interface Organ {
-  id: string; name: string; weight: string;
-  cx: number; cy: number; rx: number; ry: number;
-  severity: Sev; anomaly: string;
-  detail: string; aiNote: string;
+interface Hotspot {
+  id: string; name: string;
+  x: number; y: number;        // % of image container
+  severity: Sev;
+  injuryType: string;
+  weight?: string;
+  bleeding: string;
+  fracture: string;
+  laceration: string;
+  observation: string;
+  aiInsight: string;
+  causeContribution: string;
+  healthPct: number;
+  toxicology?: string;
+  fluid?: string;
+  layers: Layer[];             // visible in which layers
 }
 
-const ORGANS: Organ[] = [
-  { id: "brain",    name: "Brain",        weight: "1,350g", cx: 100, cy: 40,  rx: 18, ry: 20,  severity: "medium",   anomaly: "Mild cerebral edema",              detail: "Mild diffuse cerebral edema noted. No herniation. Subarachnoid hemorrhage present in occipital sulci.", aiNote: "Edema pattern consistent with blunt impact 8–10h prior." },
-  { id: "heart",    name: "Heart",        weight: "320g",   cx: 98,  cy: 116, rx: 9,  ry: 10,  severity: "low",      anomaly: "Normal",                           detail: "Heart 320g, within normal limits. Coronary arteries patent. No myocardial infarction.", aiNote: "No cardiac contribution to death detected." },
-  { id: "lung-r",   name: "Right Lung",   weight: "620g",   cx: 118, cy: 118, rx: 12, ry: 18,  severity: "medium",   anomaly: "Subpleural hemorrhage",            detail: "Right lung 620g. Subpleural hemorrhage along inferior lobe. Mild contusion pattern.", aiNote: "Hemorrhage consistent with blunt thoracic force." },
-  { id: "lung-l",   name: "Left Lung",    weight: "580g",   cx: 82,  cy: 118, rx: 12, ry: 18,  severity: "medium",   anomaly: "Right lung contusion",             detail: "Left lung 580g. Congested, no laceration. Minor atelectasis noted at base.", aiNote: "Secondary congestion from traumatic shock." },
-  { id: "liver",    name: "Liver",        weight: "1,480g", cx: 112, cy: 150, rx: 16, ry: 12,  severity: "critical", anomaly: "Capsular tear · internal bleeding", detail: "Liver 1,480g. Capsular tear 6.5 cm on right lobe. Hemoperitoneum ~1,200 ml. Active bleeding at recovery.", aiNote: "Liver laceration is secondary cause of death. Critical finding." },
-  { id: "spleen",   name: "Spleen",       weight: "150g",   cx: 83,  cy: 151, rx: 8,  ry: 9,   severity: "low",      anomaly: "Normal",                           detail: "Spleen 150g, normal size and consistency. No laceration.", aiNote: "No splenic involvement detected." },
-  { id: "kidney-r", name: "Right Kidney", weight: "130g",   cx: 116, cy: 166, rx: 6,  ry: 9,   severity: "low",      anomaly: "Normal",                           detail: "Right kidney 130g, normal capsule, no cortical injury.", aiNote: "Renal function indicators within normal range." },
-  { id: "kidney-l", name: "Left Kidney",  weight: "136g",   cx: 84,  cy: 166, rx: 6,  ry: 9,   severity: "low",      anomaly: "Normal",                           detail: "Left kidney 136g, normal appearance.", aiNote: "No renal pathology identified." },
-  { id: "stomach",  name: "Stomach",      weight: "—",      cx: 100, cy: 160, rx: 10, ry: 8,   severity: "low",      anomaly: "Partially digested food",          detail: "Stomach contains partially digested rice and vegetables. Last meal approximately 2h before TOD.", aiNote: "Meal timing corroborates 19:30–21:00 TOD window." },
+// ── Forensic hotspot data ──────────────────────────────────────────────────
+
+const HOTSPOTS: Hotspot[] = [
+  { id: "brain",    name: "Brain",         x: 50,  y: 6.5,  severity: "critical", injuryType: "Blunt Force Trauma",    weight: "1,350g", bleeding: "Subarachnoid hemorrhage",     fracture: "Depressed occipital fracture (3 sites)", laceration: "None",             observation: "Mild diffuse cerebral edema. Subarachnoid hemorrhage in occipital sulci. Primary fatal injury.", aiInsight: "Cerebral edema pattern consistent with blunt impact 8–10h prior. Single high-energy impact trajectory.", causeContribution: "PRIMARY — 70%",   healthPct: 28,  toxicology: "Trace diazepam detected",          fluid: "None",           layers: ["organs","skeletal","nervous","heatmap"] },
+  { id: "neck",     name: "Neck / Carotid",x: 50,  y: 15,   severity: "medium",   injuryType: "Contusion",             weight: "N/A",    bleeding: "Minor petechial hemorrhage",  fracture: "C1–C2 no fracture",              laceration: "Surface abrasion",  observation: "Carotid soft tissue bruising. No fracture. Indicates manual restraint applied briefly.", aiInsight: "Petechial pattern suggests transient compression — restraint or chokehold prior to blunt assault.",  causeContribution: "SECONDARY — 10%", healthPct: 62,  toxicology: "None",                             fluid: "None",           layers: ["organs","circulatory","nervous","heatmap"] },
+  { id: "heart",    name: "Heart",         x: 46,  y: 29.5, severity: "low",      injuryType: "No Direct Injury",      weight: "320g",   bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Heart 320g within normal limits. Coronary arteries patent. No myocardial infarction.", aiInsight: "No cardiac contribution to death. Elevated catecholamines consistent with acute traumatic stress.", causeContribution: "NONE",            healthPct: 91,  toxicology: "None",                             fluid: "None",           layers: ["organs","circulatory","heatmap"] },
+  { id: "lung-r",   name: "Right Lung",    x: 60,  y: 27,   severity: "medium",   injuryType: "Contusion",             weight: "620g",   bleeding: "Subpleural hemorrhage",       fracture: "Rib 4–5 fracture (right)",       laceration: "None",             observation: "Subpleural hemorrhage inferior lobe. Rib 4–5 fractures consistent with lateral blunt force.", aiInsight: "Lung contusion pattern suggests right-lateral impact — secondary blow after primary head strike.",  causeContribution: "SECONDARY — 8%",  healthPct: 55,  toxicology: "None",                             fluid: "Mild effusion 80ml", layers: ["organs","circulatory","skeletal","heatmap"] },
+  { id: "lung-l",   name: "Left Lung",     x: 38,  y: 27,   severity: "low",      injuryType: "Congestion",            weight: "580g",   bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Left lung 580g. Mild congestion and basal atelectasis. No primary injury.", aiInsight: "Congestion secondary to traumatic shock state. Not a direct contributing factor to death.",         causeContribution: "MINIMAL — 3%",    healthPct: 72,  toxicology: "None",                             fluid: "None",           layers: ["organs","circulatory","heatmap"] },
+  { id: "liver",    name: "Liver",         x: 57,  y: 40,   severity: "critical", injuryType: "Laceration",            weight: "1,480g", bleeding: "Severe — hemoperitoneum",     fracture: "None",                           laceration: "Capsular tear 6.5cm", observation: "Liver 1,480g. Capsular tear right lobe 6.5cm depth 2.1cm. Active hemorrhage at recovery. Hemoperitoneum ~1,200 ml.", aiInsight: "Liver laceration is secondary cause of death. Blunt abdominal force consistent with weapon impact.", causeContribution: "CRITICAL — 20%",  healthPct: 18,  toxicology: "None",                             fluid: "1,200 ml hemoperitoneum", layers: ["organs","circulatory","heatmap"] },
+  { id: "spleen",   name: "Spleen",        x: 40,  y: 40,   severity: "low",      injuryType: "No Injury",             weight: "150g",   bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Spleen 150g, normal size and consistency. No laceration or rupture.", aiInsight: "No splenic involvement. Absence of splenic injury rules out high-velocity impact at left flank.",    causeContribution: "NONE",            healthPct: 95,  toxicology: "None",                             fluid: "None",           layers: ["organs","heatmap"] },
+  { id: "stomach",  name: "Stomach",       x: 50,  y: 43.5, severity: "low",      injuryType: "Contents Analysis",     weight: "N/A",    bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Partially digested rice and vegetables. Meal approximately 2h before TOD. Pylorus intact.", aiInsight: "Gastric contents timing corroborates TOD window 19:30–21:00. Last meal ~17:30 confirmed.",          causeContribution: "NONE",            healthPct: 88,  toxicology: "Trace diazepam in gastric wash",   fluid: "None",           layers: ["organs","heatmap"] },
+  { id: "kidney-r", name: "Right Kidney",  x: 59,  y: 48,   severity: "low",      injuryType: "No Injury",             weight: "130g",   bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Right kidney 130g, normal capsule and cortex. No contusion or laceration.", aiInsight: "Renal function indicators within normal range. Kidney damage absent — rules out renal blunt trauma.", causeContribution: "NONE",            healthPct: 94,  toxicology: "None",                             fluid: "None",           layers: ["organs","heatmap"] },
+  { id: "kidney-l", name: "Left Kidney",   x: 39,  y: 48,   severity: "low",      injuryType: "No Injury",             weight: "136g",   bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Left kidney 136g. No significant pathology.", aiInsight: "No renal pathology. Bilateral kidney integrity rules out fall mechanism.",                          causeContribution: "NONE",            healthPct: 96,  toxicology: "None",                             fluid: "None",           layers: ["organs","heatmap"] },
+  { id: "abdomen",  name: "Abdomen",       x: 50,  y: 53,   severity: "critical", injuryType: "Internal Hemorrhage",   weight: "N/A",    bleeding: "~1,200 ml hemoperitoneum",    fracture: "None",                           laceration: "Mesenteric tear",  observation: "Hemoperitoneum ~1,200 ml. Source: liver laceration + mesenteric tear. Active hemorrhage confirmed.", aiInsight: "Abdominal hemorrhage volume indicates 30–40 min of active internal bleeding post-injury.",           causeContribution: "CRITICAL — 20%",  healthPct: 15,  toxicology: "None",                             fluid: "1,200 ml blood",  layers: ["organs","circulatory","heatmap"] },
+  { id: "arm-l",    name: "Left Arm",      x: 18,  y: 42,   severity: "low",      injuryType: "Defensive Bruise",      weight: "N/A",    bleeding: "Minor soft tissue",           fracture: "None",                           laceration: "Surface abrasion 3.1cm", observation: "Defensive contusion 12cm left forearm. Surface abrasion consistent with fall or defensive posture.", aiInsight: "Defensive wounds confirm victim was conscious during initial phase of assault.",                     causeContribution: "NONE",            healthPct: 85,  toxicology: "None",                             fluid: "None",           layers: ["organs","skeletal","heatmap"] },
+  { id: "arm-r",    name: "Right Arm",     x: 82,  y: 42,   severity: "low",      injuryType: "No Injury",             weight: "N/A",    bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Right arm unremarkable. No defensive injuries observed.", aiInsight: "Absence of right-arm defensive wounds suggests attacker approached from victim's right side.",        causeContribution: "NONE",            healthPct: 98,  toxicology: "None",                             fluid: "None",           layers: ["organs","skeletal","heatmap"] },
+  { id: "leg-l",    name: "Left Leg",      x: 43,  y: 76,   severity: "medium",   injuryType: "Post-mortem Abrasion",  weight: "N/A",    bleeding: "None (post-mortem)",          fracture: "None",                           laceration: "Deep 8.0cm",       observation: "Post-mortem drag mark 8.0cm depth 1.3cm on left thigh. Body relocated after death.", aiInsight: "Drag pattern orientation consistent with body moved ~4 meters post-mortem. Confirms relocation.",    causeContribution: "INDICATOR",       healthPct: 78,  toxicology: "None",                             fluid: "None",           layers: ["organs","skeletal","heatmap"] },
+  { id: "leg-r",    name: "Right Leg",     x: 57,  y: 76,   severity: "low",      injuryType: "No Injury",             weight: "N/A",    bleeding: "None",                        fracture: "None",                           laceration: "None",             observation: "Right leg unremarkable. No trauma identified.", aiInsight: "No right-leg injuries. Confirms unidirectional assault approach from victim's right.",               causeContribution: "NONE",            healthPct: 97,  toxicology: "None",                             fluid: "None",           layers: ["organs","skeletal","heatmap"] },
 ];
 
-interface Injury {
-  id: string; label: string; type: string;
-  size: string; depth: string; bleeding: string;
-  severity: Sev; fracture: string; observation: string;
-  cx: number; cy: number;
-  cardSide: "left" | "right"; cardY: number;
-}
-
-const INJURIES: Injury[] = [
-  { id: "i-head",    label: "Head / Scalp",      type: "Blunt Force Trauma",   size: "4.2 cm",    depth: "2.1 cm",  bleeding: "Severe",          severity: "critical", fracture: "Depressed skull fracture",  observation: "Primary COD. 3 patterned impacts consistent with iron rod (87 cm). Subdural hematoma confirmed.", cx: 100, cy: 25,  cardSide: "left",  cardY: 4  },
-  { id: "i-lung",    label: "Right Lung",         type: "Contusion",            size: "25%",       depth: "N/A",     bleeding: "Yes",             severity: "medium",   fracture: "None",                      observation: "Subpleural hemorrhage, right inferior lobe. Blunt thoracic force corroborates assault trajectory.", cx: 124, cy: 112, cardSide: "right", cardY: 6  },
-  { id: "i-liver",   label: "Liver",              type: "Laceration",           size: "6.5 cm",    depth: "2.1 cm",  bleeding: "Severe",          severity: "critical", fracture: "None",                      observation: "Capsular tear with hemoperitoneum ~1,200 ml. Secondary cause of death.", cx: 116, cy: 150, cardSide: "left",  cardY: 30 },
-  { id: "i-arm",     label: "Left Arm",           type: "Defensive Bruise",     size: "12.0 cm",   depth: "Surface", bleeding: "Minor",           severity: "low",      fracture: "None",                      observation: "Soft tissue contusion. Defensive posture confirmed. Victim was conscious during initial attack.", cx: 54,  cy: 138, cardSide: "right", cardY: 34 },
-  { id: "i-abdomen", label: "Abdominal Cavity",   type: "Internal Bleeding",    size: "~1,200 ml", depth: "N/A",     bleeding: "Critical",        severity: "critical", fracture: "None",                      observation: "Hemoperitoneum. Source: liver laceration + mesenteric tear. Hemoperitoneum confirmed at recovery.", cx: 100, cy: 172, cardSide: "left",  cardY: 56 },
-  { id: "i-leg",     label: "Left Thigh",         type: "Post-mortem Abrasion", size: "8.0 cm",    depth: "1.3 cm",  bleeding: "None (PM)",       severity: "medium",   fracture: "None",                      observation: "Post-mortem drag mark. Body relocated after death — confirms livor mortis inconsistency.", cx: 90,  cy: 246, cardSide: "right", cardY: 60 },
+const AI_INSIGHTS = [
+  "Brain hemorrhage detected — primary cause of death confirmed",
+  "Liver trauma indicates blunt force abdominal impact",
+  "Hemoperitoneum ~1,200 ml — internal bleeding active at time of recovery",
+  "Defensive wounds on left arm confirm victim was conscious during assault",
+  "Diazepam trace suggests pre-assault chemical sedation",
+  "Post-mortem body relocation confirmed via livor mortis analysis",
+  "Cell tower + physical evidence converge: TOD window 20:15–20:55",
+  "Suspect S-118 DNA match at 99.2% on recovered weapon",
 ];
 
-const KEY_OBS = [
-  "Multiple blunt force injuries observed — consistent with single weapon (iron rod).",
-  "Internal bleeding in abdominal cavity (~1,200 ml hemoperitoneum).",
-  "Liver laceration is likely a major secondary contributor to death.",
-  "No evidence of firearm injury or sharp force trauma.",
-  "Defensive wounds on left arm confirm victim was conscious initially.",
-  "Post-mortem relocation confirmed by fixed livor mortis inconsistency.",
-  "Toxicology: trace diazepam detected — potential incapacitation pre-assault.",
-];
+// ── Severity style map ─────────────────────────────────────────────────────
 
-// ── Severity helpers ───────────────────────────────────────────────────────
-
-const SEV_COLOR: Record<Sev, { glow: string; fill: string; stroke: string; badge: string; text: string; dot: string }> = {
-  critical: { glow: "rgba(239,68,68,0.7)",  fill: "rgba(239,68,68,0.25)",  stroke: "#ef4444", badge: "bg-red-600/90 text-white",           text: "text-red-400",    dot: "bg-red-500"    },
-  high:     { glow: "rgba(249,115,22,0.7)", fill: "rgba(249,115,22,0.22)", stroke: "#f97316", badge: "bg-orange-500/80 text-white",         text: "text-orange-400", dot: "bg-orange-500" },
-  medium:   { glow: "rgba(234,179,8,0.6)",  fill: "rgba(234,179,8,0.18)",  stroke: "#eab308", badge: "bg-yellow-500/80 text-black",         text: "text-yellow-400", dot: "bg-yellow-500" },
-  low:      { glow: "rgba(34,197,94,0.5)",  fill: "rgba(34,197,94,0.12)",  stroke: "#22c55e", badge: "bg-emerald-600/80 text-white",        text: "text-emerald-400",dot: "bg-emerald-500"},
+const SEV: Record<Sev, { ring: string; glow: string; fill: string; text: string; badge: string; dot: string; heatmap: string }> = {
+  critical: { ring: "#ef4444", glow: "rgba(239,68,68,0.8)",   fill: "rgba(239,68,68,0.25)",  text: "text-red-400",    badge: "bg-red-600/90 text-white",        dot: "bg-red-500",    heatmap: "rgba(239,68,68,0.35)"   },
+  high:     { ring: "#f97316", glow: "rgba(249,115,22,0.7)",  fill: "rgba(249,115,22,0.22)", text: "text-orange-400", badge: "bg-orange-500/80 text-white",     dot: "bg-orange-500", heatmap: "rgba(249,115,22,0.28)"  },
+  medium:   { ring: "#eab308", glow: "rgba(234,179,8,0.65)",  fill: "rgba(234,179,8,0.18)",  text: "text-yellow-400", badge: "bg-yellow-500/80 text-black",     dot: "bg-yellow-400", heatmap: "rgba(234,179,8,0.22)"   },
+  low:      { ring: "#22c55e", glow: "rgba(34,197,94,0.5)",   fill: "rgba(34,197,94,0.12)",  text: "text-emerald-400",badge: "bg-emerald-600/80 text-white",    dot: "bg-emerald-400",heatmap: "rgba(34,197,94,0.1)"    },
 };
 
-function SeverityBadge({ sev }: { sev: Sev }) {
-  return <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${SEV_COLOR[sev].badge}`}>{sev}</span>;
+const HEATMAP_SIZE: Record<Sev, number> = { critical: 90, high: 72, medium: 56, low: 32 };
+
+// ── Layer config ───────────────────────────────────────────────────────────
+
+const LAYERS: { id: Layer; label: string; icon: React.ReactNode; tint?: string }[] = [
+  { id: "organs",     label: "Organ Damage",  icon: <Activity className="h-3 w-3" /> },
+  { id: "heatmap",    label: "Trauma Heatmap",icon: <Droplets className="h-3 w-3" /> },
+  { id: "skeletal",   label: "Skeletal",      icon: <Bone className="h-3 w-3" />,      tint: "rgba(100,160,255,0.18)" },
+  { id: "circulatory",label: "Circulatory",   icon: <Heart className="h-3 w-3" />,     tint: "rgba(255,60,60,0.18)"  },
+  { id: "nervous",    label: "Nervous System",icon: <Cpu className="h-3 w-3" />,       tint: "rgba(240,200,40,0.15)" },
+];
+
+// ── Helper components ──────────────────────────────────────────────────────
+
+function SevBadge({ s }: { s: Sev }) {
+  return <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${SEV[s].badge}`}>{s}</span>;
 }
 
-// ── Organ icon map ─────────────────────────────────────────────────────────
-
-const ORGAN_ICONS: Record<string, React.ReactNode> = {
-  brain: <Brain className="h-3.5 w-3.5" />,
-  heart: <Heart className="h-3.5 w-3.5" />,
-  "lung-r": <Activity className="h-3.5 w-3.5" />,
-  "lung-l": <Activity className="h-3.5 w-3.5" />,
-  liver: <Shield className="h-3.5 w-3.5" />,
-  spleen: <Activity className="h-3.5 w-3.5" />,
-  "kidney-r": <Activity className="h-3.5 w-3.5" />,
-  "kidney-l": <Activity className="h-3.5 w-3.5" />,
-  stomach: <Activity className="h-3.5 w-3.5" />,
-};
-
-// ── Detail modal ───────────────────────────────────────────────────────────
-
-function DetailModal({ item, onClose }: { item: Organ | Injury | null; onClose: () => void }) {
-  if (!item) return null;
-  const isOrgan = "rx" in item;
-  const sev: Sev = item.severity;
-  const c = SEV_COLOR[sev];
-
+function HealthBar({ pct, sev }: { pct: number; sev: Sev }) {
   return (
-    <AnimatePresence>
-      <motion.div
-        key="modal-backdrop"
-        className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          key="modal-box"
-          className="relative w-[340px] rounded-xl border bg-[#060d1f] p-5 shadow-2xl"
-          style={{ borderColor: c.stroke + "80" }}
-          initial={{ scale: 0.88, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.88, opacity: 0, y: 20 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="absolute -inset-px rounded-xl opacity-30" style={{ boxShadow: `0 0 32px ${c.glow}` }} />
-          <button onClick={onClose} className="absolute right-3 top-3 text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
-
-          <div className="mb-3 flex items-center gap-2">
-            <div className="rounded-lg p-2" style={{ background: c.fill, border: `1px solid ${c.stroke}40` }}>
-              {isOrgan ? ORGAN_ICONS[item.id] ?? <Activity className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            </div>
-            <div>
-              <div className="text-sm font-bold text-white">{item.name ?? (item as Injury).label}</div>
-              <SeverityBadge sev={sev} />
-            </div>
-          </div>
-
-          {isOrgan ? (
-            <div className="space-y-2 text-[11px]">
-              <Row label="Weight" value={(item as Organ).weight} />
-              <Row label="Anomaly" value={(item as Organ).anomaly} color={c.text} />
-              <p className="text-slate-300 leading-relaxed pt-1">{(item as Organ).detail}</p>
-              <div className="mt-3 rounded-lg border border-fuchsia-500/30 bg-fuchsia-950/30 p-2.5">
-                <div className="flex items-center gap-1.5 mb-1 text-fuchsia-400 text-[10px] font-bold uppercase tracking-wider"><Zap className="h-3 w-3" />AI Observation</div>
-                <p className="text-fuchsia-200 text-[10px] leading-relaxed">{(item as Organ).aiNote}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2 text-[11px]">
-              <Row label="Injury Type"  value={(item as Injury).type} />
-              <Row label="Size / Extent" value={(item as Injury).size} />
-              <Row label="Depth"        value={(item as Injury).depth} />
-              <Row label="Bleeding"     value={(item as Injury).bleeding} color={c.text} />
-              <Row label="Fracture"     value={(item as Injury).fracture} />
-              <p className="text-slate-300 leading-relaxed pt-1">{(item as Injury).observation}</p>
-            </div>
-          )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
-function Row({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="flex gap-2">
-      <span className="w-24 shrink-0 text-slate-500 uppercase tracking-wider text-[9px] mt-0.5">{label}</span>
-      <span className={`font-medium ${color ?? "text-slate-300"}`}>{value}</span>
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden">
+        <motion.div className="h-full rounded-full"
+          style={{ background: SEV[sev].ring }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+        />
+      </div>
+      <span className={`text-[9px] font-mono ${SEV[sev].text}`}>{pct}%</span>
     </div>
   );
 }
 
-// ── Animated body SVG ──────────────────────────────────────────────────────
+// ── Hotspot marker ─────────────────────────────────────────────────────────
 
-function BodySVG({
-  selectedId,
-  onOrgan,
-  onInjury,
-}: {
-  selectedId: string | null;
-  onOrgan: (o: Organ) => void;
-  onInjury: (i: Injury) => void;
+function HotspotMarker({ hs, active, layer, onClick }: {
+  hs: Hotspot; active: boolean; layer: Layer; onClick: () => void;
 }) {
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hov, setHov] = useState(false);
+  const visible = hs.layers.includes(layer);
+  if (!visible) return null;
+  const c = SEV[hs.severity];
 
   return (
-    <svg viewBox="0 0 200 320" className="h-full w-full" style={{ filter: "drop-shadow(0 0 18px rgba(34,211,238,0.18))" }}>
-      <defs>
-        <radialGradient id="bodyBg" cx="50%" cy="45%" r="55%">
-          <stop offset="0%" stopColor="rgba(34,211,238,0.06)" />
-          <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-        </radialGradient>
-        <radialGradient id="organGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(34,211,238,0.35)" />
-          <stop offset="100%" stopColor="rgba(34,211,238,0)" />
-        </radialGradient>
-        {/* Scan line gradient */}
-        <linearGradient id="scanLine" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(34,211,238,0)" />
-          <stop offset="50%" stopColor="rgba(34,211,238,0.55)" />
-          <stop offset="100%" stopColor="rgba(34,211,238,0)" />
-        </linearGradient>
-        <filter id="glow-cyan">
-          <feGaussianBlur stdDeviation="2.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-        {ORGANS.map(o => (
-          <radialGradient key={`rg-${o.id}`} id={`rg-${o.id}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={SEV_COLOR[o.severity].stroke} stopOpacity="0.45" />
-            <stop offset="100%" stopColor={SEV_COLOR[o.severity].stroke} stopOpacity="0.05" />
-          </radialGradient>
-        ))}
-      </defs>
-
-      {/* Body background glow */}
-      <ellipse cx="100" cy="170" rx="70" ry="140" fill="url(#bodyBg)" />
-
-      {/* ── Body outline (X-ray style) ── */}
-      {/* Head */}
-      <ellipse cx="100" cy="40" rx="22" ry="26"
-        className="fill-cyan-900/10 stroke-cyan-400/30" strokeWidth="0.8" />
-      {/* Neck */}
-      <rect x="92" y="64" width="16" height="16" rx="6"
-        className="fill-cyan-900/10 stroke-cyan-400/25" strokeWidth="0.8" />
-      {/* Torso */}
-      <rect x="62" y="78" width="76" height="118" rx="20"
-        className="fill-cyan-900/10 stroke-cyan-400/30" strokeWidth="0.8" />
-      {/* Left arm */}
-      <rect x="46" y="82" width="18" height="102" rx="9"
-        className="fill-cyan-900/8 stroke-cyan-400/20" strokeWidth="0.7" />
-      {/* Right arm */}
-      <rect x="136" y="82" width="18" height="102" rx="9"
-        className="fill-cyan-900/8 stroke-cyan-400/20" strokeWidth="0.7" />
-      {/* Left leg */}
-      <rect x="68" y="194" width="26" height="118" rx="12"
-        className="fill-cyan-900/8 stroke-cyan-400/20" strokeWidth="0.7" />
-      {/* Right leg */}
-      <rect x="106" y="194" width="26" height="118" rx="12"
-        className="fill-cyan-900/8 stroke-cyan-400/20" strokeWidth="0.7" />
-
-      {/* ── Spine ── */}
-      {Array.from({ length: 10 }).map((_, i) => (
-        <rect key={i} x="97.5" y={82 + i * 11} width="5" height="7" rx="1.5"
-          fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.5" />
-      ))}
-
-      {/* ── Rib cage lines ── */}
-      {[0,1,2,3].map((i) => (
-        <g key={`rib-${i}`}>
-          <path d={`M 98 ${95 + i*12} Q 78 ${92 + i*12} 68 ${98 + i*12}`}
-            fill="none" stroke="rgba(34,211,238,0.15)" strokeWidth="0.7" />
-          <path d={`M 102 ${95 + i*12} Q 122 ${92 + i*12} 132 ${98 + i*12}`}
-            fill="none" stroke="rgba(34,211,238,0.15)" strokeWidth="0.7" />
-        </g>
-      ))}
-
-      {/* ── Organs ── */}
-      {ORGANS.map((o) => {
-        const isHov = hovered === o.id;
-        const isSel = selectedId === o.id;
-        const c = SEV_COLOR[o.severity];
-        return (
-          <g key={o.id}
-            style={{ cursor: "pointer" }}
-            onClick={() => onOrgan(o)}
-            onMouseEnter={() => setHovered(o.id)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <ellipse cx={o.cx} cy={o.cy} rx={o.rx + (isHov ? 2 : 0)} ry={o.ry + (isHov ? 2 : 0)}
-              fill={`url(#rg-${o.id})`}
-              stroke={c.stroke}
-              strokeWidth={isSel ? 2 : isHov ? 1.5 : 0.8}
-              strokeOpacity={isSel || isHov ? 0.9 : 0.5}
-              style={{ filter: (isSel || isHov) ? `drop-shadow(0 0 6px ${c.glow})` : undefined, transition: "all 0.2s" }}
-            />
-            {/* Organ label dot */}
-            <circle cx={o.cx} cy={o.cy} r="2"
-              fill={c.stroke} opacity={0.85}
-              style={{ filter: `drop-shadow(0 0 4px ${c.glow})` }}
-            />
-          </g>
-        );
-      })}
-
-      {/* ── Injury markers ── */}
-      {INJURIES.map((inj) => {
-        const c = SEV_COLOR[inj.severity];
-        const isSel = selectedId === inj.id;
-        return (
-          <g key={inj.id}
-            style={{ cursor: "pointer" }}
-            onClick={() => onInjury(inj)}
-            onMouseEnter={() => setHovered(inj.id)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            {/* Outer pulse ring */}
-            <circle cx={inj.cx} cy={inj.cy} r={inj.severity === "critical" ? 9 : 7}
-              fill="none" stroke={c.stroke} strokeWidth="0.6" strokeOpacity="0.4">
-              <animate attributeName="r"
-                values={`${inj.severity === "critical" ? 9 : 7};${inj.severity === "critical" ? 14 : 11};${inj.severity === "critical" ? 9 : 7}`}
-                dur={inj.severity === "critical" ? "1.4s" : "2s"} repeatCount="indefinite" />
-              <animate attributeName="stroke-opacity" values="0.4;0;0.4" dur={inj.severity === "critical" ? "1.4s" : "2s"} repeatCount="indefinite" />
-            </circle>
-            {/* Core marker */}
-            <circle cx={inj.cx} cy={inj.cy} r={inj.severity === "critical" ? 5 : 3.5}
-              fill={c.fill} stroke={c.stroke} strokeWidth={isSel ? 2 : 1.2}
-              style={{ filter: `drop-shadow(0 0 5px ${c.glow})`, transition: "all 0.2s" }}
-            />
-            <circle cx={inj.cx} cy={inj.cy} r="1.5" fill={c.stroke} opacity="0.9" />
-          </g>
-        );
-      })}
-
-      {/* ── Scan line animation ── */}
-      <rect x="62" width="76" height="18" fill="url(#scanLine)" opacity="0.6">
-        <animateTransform attributeName="transform" type="translate"
-          values="0,70;0,195;0,70" dur="4s" repeatCount="indefinite" />
-      </rect>
-
-      {/* ── Grid overlay ── */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <line key={`hl-${i}`} x1="0" y1={40 * i} x2="200" y2={40 * i}
-          stroke="rgba(34,211,238,0.04)" strokeWidth="0.5" />
-      ))}
-      {Array.from({ length: 5 }).map((_, i) => (
-        <line key={`vl-${i}`} x1={40 * i} y1="0" x2={40 * i} y2="320"
-          stroke="rgba(34,211,238,0.04)" strokeWidth="0.5" />
-      ))}
-    </svg>
-  );
-}
-
-// ── Organ analysis row ─────────────────────────────────────────────────────
-
-function OrganRow({ organ, onClick }: { organ: Organ; onClick: () => void }) {
-  const [open, setOpen] = useState(false);
-  const c = SEV_COLOR[organ.severity];
-  return (
-    <div className="rounded-lg border border-white/5 bg-slate-900/40 overflow-hidden">
-      <button
-        onClick={() => { setOpen(!open); onClick(); }}
-        className="flex w-full items-center gap-2 px-2.5 py-2 hover:bg-white/5 transition-colors text-left"
-      >
-        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${c.text}`}
-          style={{ background: SEV_COLOR[organ.severity].fill, border: `1px solid ${SEV_COLOR[organ.severity].stroke}40` }}>
-          {ORGAN_ICONS[organ.id] ?? <Activity className="h-3 w-3" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-semibold text-white">{organ.name}</div>
-          <div className="text-[9px] text-slate-500">Weight: {organ.weight}</div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {organ.severity !== "low" ? (
-            <AlertTriangle className={`h-3 w-3 ${c.text}`} />
-          ) : (
-            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-          )}
-          {open ? <ChevronUp className="h-3 w-3 text-slate-500" /> : <ChevronDown className="h-3 w-3 text-slate-500" />}
-        </div>
-      </button>
+    <div
+      className="absolute z-20 flex items-center justify-center"
+      style={{ left: `${hs.x}%`, top: `${hs.y}%`, transform: "translate(-50%,-50%)" }}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      {/* Outer pulse ring */}
+      <div className="absolute rounded-full pointer-events-none"
+        style={{
+          width: active ? 36 : hov ? 30 : 24,
+          height: active ? 36 : hov ? 30 : 24,
+          border: `1.5px solid ${c.ring}`,
+          boxShadow: `0 0 12px ${c.glow}`,
+          opacity: 0.6,
+          transition: "all 0.25s",
+          animation: `hotspot-ping ${hs.severity === "critical" ? 1.2 : 2}s ease-out infinite`,
+        }}
+      />
+      {/* Core dot */}
+      <div
+        className="relative rounded-full cursor-pointer"
+        style={{
+          width: active ? 14 : hov ? 12 : 9,
+          height: active ? 14 : hov ? 12 : 9,
+          background: c.ring,
+          boxShadow: `0 0 ${active ? 18 : 10}px ${c.glow}`,
+          transition: "all 0.2s",
+        }}
+      />
+      {/* Hover tooltip */}
       <AnimatePresence>
-        {open && (
+        {hov && !active && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: -6, scale: 0.9 }}
+            animate={{ opacity: 1, y: -8, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.9 }}
+            className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 pointer-events-none z-30"
           >
-            <div className="px-2.5 pb-2 text-[10px] text-slate-400 border-t border-white/5 pt-1.5">
-              <span className={`font-semibold ${c.text}`}>Anomaly: </span>{organ.anomaly}
+            <div className="rounded-md border px-2 py-1 text-[9px] font-semibold whitespace-nowrap shadow-xl backdrop-blur-md"
+              style={{ borderColor: c.ring + "60", background: "#070e20e0", color: c.ring }}>
+              {hs.name}
             </div>
           </motion.div>
         )}
@@ -371,212 +164,459 @@ function OrganRow({ organ, onClick }: { organ: Organ; onClick: () => void }) {
   );
 }
 
-// ── Floating injury card (left/right of body) ──────────────────────────────
+// ── Forensic detail card ───────────────────────────────────────────────────
 
-function InjuryCard({ inj, onClick }: { inj: Injury; onClick: () => void }) {
-  const c = SEV_COLOR[inj.severity];
+function ForensicCard({ hs, onClose }: { hs: Hotspot; onClose: () => void }) {
+  const c = SEV[hs.severity];
   return (
     <motion.div
-      initial={{ opacity: 0, x: inj.cardSide === "left" ? -20 : 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.1 }}
-      onClick={onClick}
-      className="cursor-pointer rounded-lg border bg-[#060d1f]/90 px-2.5 py-2 backdrop-blur-sm w-[155px] hover:border-opacity-80 transition-all"
-      style={{ borderColor: c.stroke + "60", boxShadow: `0 0 12px ${c.glow}30` }}
+      key={hs.id}
+      initial={{ opacity: 0, scale: 0.9, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 12 }}
+      className="absolute z-40 w-[210px] rounded-xl backdrop-blur-xl border p-3 shadow-2xl"
+      style={{
+        background: "rgba(4,9,26,0.92)",
+        borderColor: c.ring + "70",
+        boxShadow: `0 0 28px ${c.glow}30`,
+        left: hs.x > 50 ? "4px" : undefined,
+        right: hs.x <= 50 ? "4px" : undefined,
+        top: `${Math.max(4, Math.min(hs.y, 60))}%`,
+      }}
     >
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{inj.label}</span>
-        <SeverityBadge sev={inj.severity} />
+      <button onClick={onClose}
+        className="absolute right-2 top-2 text-slate-500 hover:text-white transition-colors">
+        <X className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-2.5 pr-4">
+        <div className="rounded-md p-1.5 shrink-0" style={{ background: c.fill, border: `1px solid ${c.ring}40` }}>
+          <Activity className="h-3.5 w-3.5" style={{ color: c.ring }} />
+        </div>
+        <div>
+          <div className="text-[11px] font-bold text-white">{hs.name}</div>
+          <SevBadge s={hs.severity} />
+        </div>
       </div>
-      <div className="space-y-0.5 text-[9px]">
-        <div><span className="text-slate-500">Injury: </span><span className={c.text}>{inj.type}</span></div>
-        <div><span className="text-slate-500">Size: </span><span className="text-slate-300">{inj.size}</span></div>
-        <div><span className="text-slate-500">Bleeding: </span><span className="text-slate-300">{inj.bleeding}</span></div>
+
+      <div className="space-y-1 text-[9px]">
+        <DetailRow label="Injury Type"   value={hs.injuryType}     />
+        {hs.weight && <DetailRow label="Weight"       value={hs.weight}         />}
+        <DetailRow label="Bleeding"      value={hs.bleeding}       color={hs.severity !== "low" ? c.text : undefined} />
+        <DetailRow label="Fracture"      value={hs.fracture}       />
+        <DetailRow label="Laceration"    value={hs.laceration}     />
+        {hs.fluid && hs.fluid !== "None" && <DetailRow label="Fluid" value={hs.fluid} color={c.text} />}
+        {hs.toxicology && hs.toxicology !== "None" && <DetailRow label="Toxicology" value={hs.toxicology} color="text-fuchsia-400" />}
       </div>
-      <button className="mt-1.5 text-[8px] uppercase tracking-widest font-bold text-cyan-400 hover:text-cyan-300">VIEW →</button>
+
+      {/* Observation */}
+      <p className="mt-2 text-[9px] text-slate-400 leading-relaxed border-t border-white/5 pt-2">
+        {hs.observation}
+      </p>
+
+      {/* AI insight */}
+      <div className="mt-2 rounded-lg border border-fuchsia-500/30 bg-fuchsia-950/30 p-2">
+        <div className="flex items-center gap-1 text-fuchsia-400 text-[8px] font-bold uppercase tracking-wider mb-1">
+          <Zap className="h-2.5 w-2.5" /> AI INSIGHT
+        </div>
+        <p className="text-[9px] text-fuchsia-200 leading-snug">{hs.aiInsight}</p>
+      </div>
+
+      {/* Cause contribution */}
+      <div className="mt-2 flex items-center justify-between text-[9px]">
+        <span className="text-slate-500">Cause contribution</span>
+        <span className={`font-bold ${c.text}`}>{hs.causeContribution}</span>
+      </div>
+
+      {/* Health bar */}
+      <div className="mt-1.5">
+        <div className="flex justify-between text-[8px] text-slate-500 mb-0.5">
+          <span>Organ Health</span><span>{hs.healthPct}%</span>
+        </div>
+        <HealthBar pct={hs.healthPct} sev={hs.severity} />
+      </div>
     </motion.div>
   );
 }
 
-// ── Mini severity map ──────────────────────────────────────────────────────
-
-function SeverityMap() {
+function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3">
-      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Injury Severity Map</div>
-      <div className="flex gap-3">
-        <svg viewBox="0 0 60 96" className="h-[96px] w-[60px] shrink-0">
-          <ellipse cx="30" cy="11" rx="8" ry="9" fill="rgba(34,211,238,0.07)" stroke="rgba(34,211,238,0.3)" strokeWidth="0.6" />
-          <rect x="18" y="21" width="24" height="36" rx="8" fill="rgba(34,211,238,0.07)" stroke="rgba(34,211,238,0.3)" strokeWidth="0.6" />
-          <rect x="9" y="24" width="10" height="30" rx="5" fill="rgba(34,211,238,0.05)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.5" />
-          <rect x="41" y="24" width="10" height="30" rx="5" fill="rgba(34,211,238,0.05)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.5" />
-          <rect x="19" y="56" width="10" height="36" rx="5" fill="rgba(34,211,238,0.05)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.5" />
-          <rect x="31" y="56" width="10" height="36" rx="5" fill="rgba(34,211,238,0.05)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.5" />
-          {/* Injury dots */}
-          <circle cx="30" cy="8"  r="3.5" fill="#ef4444" opacity="0.9"><animate attributeName="r" values="3.5;5;3.5" dur="1.6s" repeatCount="indefinite" /></circle>
-          <circle cx="36" cy="34" r="3"   fill="#ef4444" opacity="0.9"><animate attributeName="r" values="3;4.5;3" dur="1.4s" repeatCount="indefinite" /></circle>
-          <circle cx="30" cy="52" r="3"   fill="#ef4444" opacity="0.9" />
-          <circle cx="22" cy="27" r="2.5" fill="#eab308" opacity="0.8" />
-          <circle cx="14" cy="42" r="2"   fill="#22c55e" opacity="0.8" />
-          <circle cx="27" cy="74" r="2.5" fill="#eab308" opacity="0.8" />
-        </svg>
-        <div className="space-y-1.5 pt-1">
-          {(["critical","high","medium","low"] as Sev[]).map((s) => (
-            <div key={s} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${SEV_COLOR[s].dot}`} />
-              <span className="text-[9px] capitalize text-slate-400">{s}</span>
+    <div className="flex gap-1.5">
+      <span className="w-20 shrink-0 text-slate-500 uppercase tracking-wider text-[8px] mt-0.5">{label}</span>
+      <span className={`font-medium ${color ?? "text-slate-300"}`}>{value}</span>
+    </div>
+  );
+}
+
+// ── Heatmap blob overlay ───────────────────────────────────────────────────
+
+function HeatmapOverlay({ hotspots }: { hotspots: Hotspot[] }) {
+  return (
+    <>
+      {hotspots.map(hs => {
+        const size = HEATMAP_SIZE[hs.severity];
+        return (
+          <div key={hs.id} className="absolute pointer-events-none"
+            style={{
+              left: `${hs.x}%`, top: `${hs.y}%`,
+              width: size, height: size,
+              transform: "translate(-50%,-50%)",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${SEV[hs.severity].heatmap} 0%, transparent 70%)`,
+              filter: "blur(8px)",
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// ── Scan line ──────────────────────────────────────────────────────────────
+
+function ScanLine() {
+  return (
+    <motion.div
+      className="absolute left-0 right-0 pointer-events-none z-10"
+      style={{
+        height: 40,
+        background: "linear-gradient(to bottom, transparent, rgba(34,211,238,0.35) 50%, transparent)",
+      }}
+      animate={{ top: ["0%", "100%"] }}
+      transition={{ duration: 3.5, repeat: Infinity, ease: "linear", repeatDelay: 0.5 }}
+    />
+  );
+}
+
+// ── Connection lines SVG overlay ───────────────────────────────────────────
+
+function ConnectionLines({ selected, containerRef }: { selected: Hotspot | null; containerRef: React.RefObject<HTMLDivElement | null> }) {
+  if (!selected) return null;
+  const cardX = selected.x <= 50 ? 96 : 4;
+  const cardY = Math.max(4, Math.min(selected.y, 60));
+  const lineColor = SEV[selected.severity].ring;
+
+  return (
+    <svg className="absolute inset-0 pointer-events-none z-30" width="100%" height="100%">
+      <defs>
+        <filter id="line-glow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <line
+        x1={`${selected.x}%`} y1={`${selected.y}%`}
+        x2={`${cardX}%`}      y2={`${cardY + 8}%`}
+        stroke={lineColor} strokeWidth="1" strokeOpacity="0.65" strokeDasharray="4 3"
+        filter="url(#line-glow)"
+      />
+      <circle cx={`${selected.x}%`} cy={`${selected.y}%`} r="3"
+        fill={lineColor} opacity="0.7" filter="url(#line-glow)" />
+    </svg>
+  );
+}
+
+// ── AI insight ticker ──────────────────────────────────────────────────────
+
+function InsightTicker() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % AI_INSIGHTS.length), 3200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-950/20 p-2.5 min-h-[52px]">
+      <div className="flex items-center gap-1.5 mb-1 text-fuchsia-400 text-[9px] font-bold uppercase tracking-widest">
+        <Zap className="h-3 w-3 animate-pulse" /> LIVE AI INSIGHT
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.p key={idx}
+          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.35 }}
+          className="text-[10px] text-fuchsia-200 leading-snug"
+        >
+          {AI_INSIGHTS[idx]}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Left panel ─────────────────────────────────────────────────────────────
+
+function LeftPanel({ layer, setLayer }: { layer: Layer; setLayer: (l: Layer) => void }) {
+  return (
+    <div className="flex flex-col gap-3 p-3 border-r border-white/5 overflow-y-auto">
+      {/* Victim profile */}
+      <div>
+        <Label>Victim Profile</Label>
+        <div className="rounded-lg border border-white/5 bg-slate-900/50 p-2.5 space-y-1.5">
+          {[
+            ["NAME",   "R. Suresh"],
+            ["AGE",    "34"],
+            ["SEX",    "Male"],
+            ["HEIGHT", "174 cm"],
+            ["WEIGHT", "69 kg"],
+            ["BMI",    "22.8 — Normal"],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between items-baseline">
+              <span className="text-[8px] uppercase tracking-widest text-slate-500">{k}</span>
+              <span className="text-[11px] font-medium text-white">{v}</span>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* PMI */}
+      <div className="rounded-lg border border-cyan-500/25 bg-cyan-950/20 p-2.5">
+        <div className="text-[8px] uppercase tracking-widest text-cyan-500/80 mb-1">Postmortem Interval</div>
+        <div className="font-mono text-lg font-bold text-cyan-300">8 – 10 Hours</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Vitreous potassium + algor mortis</div>
+      </div>
+
+      {/* Layer toggles */}
+      <div>
+        <Label>Visualization Layer</Label>
+        <div className="space-y-1">
+          {LAYERS.map(l => (
+            <button key={l.id}
+              onClick={() => setLayer(l.id)}
+              className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-all ${
+                layer === l.id
+                  ? "bg-cyan-500/20 border border-cyan-500/50 text-cyan-300"
+                  : "border border-white/5 bg-slate-900/40 text-slate-400 hover:border-white/10 hover:text-slate-300"
+              }`}
+            >
+              <span className={layer === l.id ? "text-cyan-400" : "text-slate-500"}>{l.icon}</span>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* AI insight ticker */}
+      <InsightTicker />
+
+      {/* COD summary */}
+      <div className="rounded-lg border border-red-500/25 bg-red-950/15 p-2.5">
+        <div className="text-[8px] uppercase tracking-widest text-red-400 mb-1">Cause of Death</div>
+        <p className="text-[9px] text-slate-300 leading-relaxed">
+          Blunt force trauma — occipital region with depressed skull fracture and subdural hemorrhage. Secondary: hepatic hemorrhage (hemoperitoneum).
+        </p>
       </div>
     </div>
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
+// ── Right panel ────────────────────────────────────────────────────────────
 
-export function AutopsyPanel() {
-  const [selected, setSelected] = useState<Organ | Injury | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  function selectOrgan(o: Organ) { setSelected(o); setSelectedId(o.id); }
-  function selectInjury(i: Injury) { setSelected(i); setSelectedId(i.id); }
-  function clearSelection() { setSelected(null); setSelectedId(null); }
-
-  const leftInjuries  = INJURIES.filter(i => i.cardSide === "left");
-  const rightInjuries = INJURIES.filter(i => i.cardSide === "right");
-
+function RightPanel({ selected, onSelect }: { selected: Hotspot | null; onSelect: (h: Hotspot) => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative rounded-xl border border-cyan-900/30 bg-[#04091a] overflow-hidden"
-      style={{ boxShadow: "0 0 60px rgba(34,211,238,0.06) inset" }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5 bg-slate-950/60">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">Autopsy Visualization</span>
-            <span className="rounded border border-cyan-500/30 bg-cyan-950/40 px-2 py-0.5 font-mono text-[9px] text-cyan-400">CASE ID: {VICTIM.caseId}</span>
-          </div>
-          <div className="text-[9px] text-slate-500 tracking-wide">Report generated: {VICTIM.reportDate}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="text-[10px] font-bold text-cyan-400 tracking-widest">AI ANALYSIS ACTIVE</span>
+    <div className="flex flex-col gap-3 p-3 border-l border-white/5 overflow-y-auto">
+      <Label>Organ Health Status</Label>
+      <div className="space-y-1.5">
+        {HOTSPOTS.filter(h => h.weight && h.weight !== "N/A").map(h => (
+          <button key={h.id} onClick={() => onSelect(h)}
+            className={`w-full rounded-lg border px-2.5 py-2 text-left transition-all hover:border-opacity-60 ${
+              selected?.id === h.id ? "border-cyan-500/60 bg-cyan-950/30" : "border-white/5 bg-slate-900/40 hover:bg-slate-800/40"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold text-white">{h.name}</span>
+              <SevBadge s={h.severity} />
+            </div>
+            <div className="text-[8px] text-slate-500 mb-1">Weight: {h.weight}</div>
+            <HealthBar pct={h.healthPct} sev={h.severity} />
+          </button>
+        ))}
+      </div>
+
+      {/* Severity legend */}
+      <div className="rounded-xl border border-white/5 bg-slate-900/40 p-2.5">
+        <Label>Severity Legend</Label>
+        <div className="space-y-1.5 mt-2">
+          {(["critical","high","medium","low"] as Sev[]).map(s => (
+            <div key={s} className="flex items-center gap-2">
+              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: SEV[s].ring, boxShadow: `0 0 6px ${SEV[s].glow}` }} />
+              <span className="text-[9px] capitalize text-slate-400">{s === "critical" ? "Critical — Primary COD" : s === "high" ? "High — Significant" : s === "medium" ? "Medium — Contributing" : "Low — No Direct Impact"}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Main 3-column layout */}
-      <div className="grid grid-cols-[220px_1fr_230px] gap-0 min-h-[620px]">
+      {/* Key findings */}
+      <div>
+        <Label>Key Forensic Findings</Label>
+        <ul className="space-y-1.5">
+          {[
+            "3 patterned blunt impacts — iron rod (87cm)",
+            "Hemoperitoneum ~1,200 ml confirmed",
+            "Post-mortem relocation via livor mortis",
+            "Trace diazepam — pre-assault sedation",
+            "DNA match S-118 at 99.2% on weapon",
+            "Defensive wounds: victim conscious at onset",
+          ].map((f, i) => (
+            <li key={i} className="flex gap-2 text-[9px] text-slate-400 leading-snug">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/60" />
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
-        {/* ── Left panel: victim profile ── */}
-        <div className="border-r border-white/5 p-3 space-y-3 overflow-y-auto">
-          <Section title="Victim Profile">
-            <ProfileRow label="NAME"   value={VICTIM.name}     />
-            <ProfileRow label="AGE"    value={String(VICTIM.age)} />
-            <ProfileRow label="SEX"    value={VICTIM.sex}      />
-            <ProfileRow label="HEIGHT" value={VICTIM.height}   />
-            <ProfileRow label="WEIGHT" value={VICTIM.weight}   />
-            <div className="flex justify-between">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">BMI</span>
-              <span className="text-[11px] font-mono text-white">{VICTIM.bmi} <span className="text-emerald-400 text-[9px]">{VICTIM.bmiLabel}</span></span>
-            </div>
-          </Section>
+// ── Small label ────────────────────────────────────────────────────────────
 
-          <div className="rounded-lg border border-cyan-500/25 bg-cyan-950/20 p-2.5">
-            <div className="text-[9px] uppercase tracking-widest text-cyan-500/80 mb-1">Postmortem Interval</div>
-            <div className="font-mono text-base font-bold text-cyan-300">{VICTIM.pmi}</div>
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">{children}</div>;
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
+export function AutopsyPanel() {
+  const [selected, setSelected] = useState<Hotspot | null>(null);
+  const [layer, setLayer] = useState<Layer>("organs");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const layerTint = LAYERS.find(l => l.id === layer)?.tint;
+
+  function toggle(hs: Hotspot) {
+    setSelected(prev => prev?.id === hs.id ? null : hs);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="rounded-xl border border-cyan-900/30 bg-[#04091a] overflow-hidden"
+      style={{ boxShadow: "0 0 60px rgba(34,211,238,0.05) inset" }}
+    >
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5 bg-slate-950/60">
+        <div>
+          <div className="flex items-center gap-3">
+            <Eye className="h-3.5 w-3.5 text-cyan-500" />
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">Forensic Autopsy Visualization</span>
+            <span className="rounded border border-cyan-500/30 bg-cyan-950/40 px-2 py-0.5 font-mono text-[9px] text-cyan-400">CASE C-2041</span>
+            <span className="rounded border border-orange-500/30 bg-orange-950/30 px-2 py-0.5 font-mono text-[9px] text-orange-400">CPR-2041</span>
           </div>
+          <div className="text-[9px] text-slate-500 mt-0.5 ml-6">Report: 26 Apr 2025 · 23:47 &nbsp;|&nbsp; Pathologist: Dr. K. Meenakshi, CFSL Chennai</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Layers className="h-3.5 w-3.5 text-cyan-500" />
+          <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">{LAYERS.find(l => l.id === layer)?.label}</span>
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse ml-2" />
+          <span className="text-[9px] text-emerald-400 font-semibold">AI ACTIVE</span>
+        </div>
+      </div>
 
-          <Section title="Overall Summary">
-            <p className="text-[10px] text-slate-400 leading-relaxed">{VICTIM.summary}</p>
-          </Section>
+      {/* ── 3-column layout ── */}
+      <div className="grid" style={{ gridTemplateColumns: "210px 1fr 210px", minHeight: 580 }}>
 
-          <button className="w-full rounded-lg border border-cyan-500/40 bg-cyan-950/30 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-400 hover:bg-cyan-900/40 transition-colors flex items-center justify-center gap-2">
-            <FileText className="h-3.5 w-3.5" /> View Detailed Report
-          </button>
+        {/* Left */}
+        <LeftPanel layer={layer} setLayer={setLayer} />
+
+        {/* Center: anatomy image + overlays */}
+        <div
+          ref={containerRef}
+          className="relative bg-black overflow-hidden flex items-center justify-center"
+          style={{ minHeight: 580 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
+        >
+          {/* Anatomy base image */}
+          <img
+            src={anatomyImg}
+            alt="Human anatomy model"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+            style={{ opacity: 0.92 }}
+          />
+
+          {/* Layer tint overlay */}
+          {layerTint && (
+            <div className="absolute inset-0 pointer-events-none" style={{ background: layerTint, mixBlendMode: "screen" }} />
+          )}
+
+          {/* Heatmap blobs */}
+          {layer === "heatmap" && <HeatmapOverlay hotspots={HOTSPOTS} />}
+
+          {/* Scan line */}
+          <ScanLine />
+
+          {/* Grid overlay */}
+          <div className="absolute inset-0 pointer-events-none opacity-20"
+            style={{ backgroundImage: "linear-gradient(rgba(34,211,238,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,0.06) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+
+          {/* Corner decorations */}
+          {[["top-2 left-2","border-t border-l"],["top-2 right-2","border-t border-r"],["bottom-2 left-2","border-b border-l"],["bottom-2 right-2","border-b border-r"]].map(([pos, border]) => (
+            <div key={pos} className={`absolute ${pos} ${border} border-cyan-500/40 w-5 h-5 pointer-events-none`} />
+          ))}
+
+          {/* Hotspot markers */}
+          {HOTSPOTS.map(hs => (
+            <HotspotMarker key={hs.id} hs={hs} active={selected?.id === hs.id} layer={layer} onClick={() => toggle(hs)} />
+          ))}
+
+          {/* Connection line from hotspot to card */}
+          <ConnectionLines selected={selected} containerRef={containerRef} />
+
+          {/* Detail card */}
+          <AnimatePresence>
+            {selected && <ForensicCard key={selected.id} hs={selected} onClose={() => setSelected(null)} />}
+          </AnimatePresence>
+
+          {/* Bottom scan label */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none">
+            <span className="text-[8px] font-mono text-cyan-500/50 tracking-widest uppercase">
+              {HOTSPOTS.filter(h => h.severity === "critical").length} Critical · {HOTSPOTS.filter(h => h.severity !== "low").length} Active Markers
+            </span>
+          </div>
         </div>
 
-        {/* ── Center: body + floating cards ── */}
-        <div className="relative flex items-center justify-center py-4">
-          {/* Left floating cards */}
-          <div className="absolute left-2 top-0 flex flex-col justify-around h-full py-8 gap-3 z-10">
-            {leftInjuries.map(inj => (
-              <InjuryCard key={inj.id} inj={inj} onClick={() => selectInjury(inj)} />
-            ))}
-          </div>
-
-          {/* Body SVG */}
-          <div className="relative z-0" style={{ height: "560px", width: "200px" }}>
-            <BodySVG selectedId={selectedId} onOrgan={selectOrgan} onInjury={selectInjury} />
-          </div>
-
-          {/* Right floating cards */}
-          <div className="absolute right-2 top-0 flex flex-col justify-around h-full py-8 gap-3 z-10">
-            {rightInjuries.map(inj => (
-              <InjuryCard key={inj.id} inj={inj} onClick={() => selectInjury(inj)} />
-            ))}
-          </div>
-
-          {/* Detail modal overlay */}
-          {selected && <DetailModal item={selected} onClose={clearSelection} />}
-        </div>
-
-        {/* ── Right panel: organ analysis + severity map + observations ── */}
-        <div className="border-l border-white/5 p-3 space-y-3 overflow-y-auto">
-          <Section title="Organ Analysis">
-            <div className="space-y-1">
-              {ORGANS.map(o => (
-                <OrganRow key={o.id} organ={o} onClick={() => selectOrgan(o)} />
-              ))}
-            </div>
-          </Section>
-
-          <SeverityMap />
-
-          <Section title="Key Observations">
-            <ul className="space-y-1.5">
-              {KEY_OBS.map((obs, i) => (
-                <li key={i} className="flex gap-2 text-[10px] text-slate-400 leading-snug">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/70" />
-                  {obs}
-                </li>
-              ))}
-            </ul>
-          </Section>
-        </div>
+        {/* Right */}
+        <RightPanel selected={selected} onSelect={toggle} />
       </div>
 
       {/* ── Bottom injury table ── */}
       <div className="border-t border-white/5 p-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Detailed Injury Table</div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Wind className="h-3.5 w-3.5 text-slate-500" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Comprehensive Injury & Organ Analysis Table</span>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[10px]">
+          <table className="w-full text-[9px]">
             <thead>
               <tr className="border-b border-white/5">
-                {["Region","Injury","Size / Extent","Severity","Anomalies","Weight"].map(h => (
-                  <th key={h} className="pb-1.5 text-left font-semibold uppercase tracking-wider text-slate-500 pr-4 whitespace-nowrap">{h}</th>
+                {["Region","Injury Type","Bleeding","Fracture","Fluid / Tox","Cause Contribution","Health %"].map(h => (
+                  <th key={h} className="pb-1.5 text-left font-semibold uppercase tracking-wider text-slate-500 pr-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {INJURIES.map((inj, i) => {
-                const c = SEV_COLOR[inj.severity];
-                const organMatch = ORGANS.find(o => inj.id.includes(o.id.replace("-","").replace("r","").replace("l","")) || inj.label.toLowerCase().includes(o.name.toLowerCase().split(" ")[0]));
+              {HOTSPOTS.map((h, i) => {
+                const c = SEV[h.severity];
                 return (
-                  <tr key={inj.id}
-                    onClick={() => selectInjury(inj)}
+                  <tr key={h.id}
+                    onClick={() => toggle(h)}
                     className={`border-b border-white/4 cursor-pointer hover:bg-white/4 transition-colors ${i % 2 === 0 ? "" : "bg-white/[0.015]"}`}
                   >
-                    <td className="py-1.5 pr-4 font-medium text-white">{inj.label}</td>
-                    <td className="py-1.5 pr-4 text-slate-400">{inj.type}</td>
-                    <td className="py-1.5 pr-4 font-mono text-slate-300">{inj.size}</td>
-                    <td className="py-1.5 pr-4"><SeverityBadge sev={inj.severity} /></td>
-                    <td className={`py-1.5 pr-4 ${c.text}`}>{inj.fracture !== "None" ? inj.fracture : inj.observation.split(".")[0]}</td>
-                    <td className="py-1.5 font-mono text-slate-500">{organMatch?.weight ?? "N/A"}</td>
+                    <td className="py-1.5 pr-3 font-semibold text-white whitespace-nowrap">{h.name}</td>
+                    <td className="py-1.5 pr-3 text-slate-400">{h.injuryType}</td>
+                    <td className={`py-1.5 pr-3 ${h.bleeding !== "None" && h.bleeding !== "None (post-mortem)" ? c.text : "text-slate-600"}`}>{h.bleeding}</td>
+                    <td className="py-1.5 pr-3 text-slate-400">{h.fracture}</td>
+                    <td className="py-1.5 pr-3 text-fuchsia-400">{h.toxicology && h.toxicology !== "None" ? h.toxicology : h.fluid && h.fluid !== "None" ? h.fluid : "—"}</td>
+                    <td className={`py-1.5 pr-3 font-bold ${c.text}`}>{h.causeContribution}</td>
+                    <td className="py-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-12 h-1 rounded-full bg-slate-800 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${h.healthPct}%`, background: c.ring }} />
+                        </div>
+                        <span className={`font-mono ${c.text}`}>{h.healthPct}%</span>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -584,26 +624,15 @@ export function AutopsyPanel() {
           </table>
         </div>
       </div>
+
+      {/* Ping keyframe injected inline */}
+      <style>{`
+        @keyframes hotspot-ping {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          70%  { transform: scale(1.8); opacity: 0;   }
+          100% { transform: scale(1);   opacity: 0;   }
+        }
+      `}</style>
     </motion.div>
-  );
-}
-
-// ── Tiny layout helpers ────────────────────────────────────────────────────
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function ProfileRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between py-0.5 border-b border-white/4">
-      <span className="text-[9px] uppercase tracking-wider text-slate-500">{label}</span>
-      <span className="text-[11px] font-medium text-white">{value}</span>
-    </div>
   );
 }
