@@ -16,10 +16,17 @@ export function StatCard({
     success: "from-success/30 to-success/0 text-success",
     "neon-2":"from-neon-2/30 to-neon-2/0 text-neon-2",
   };
+  const toneAccent: Record<string, string> = {
+    primary: "border-l-primary/60",
+    danger: "border-l-danger/60",
+    warn: "border-l-warn/60",
+    success: "border-l-success/60",
+    "neon-2": "border-l-neon-2/60",
+  };
   return (
     <motion.div
       whileHover={{ y: -3 }}
-      className="glass relative overflow-hidden rounded-xl p-4"
+      className={`glass relative overflow-hidden rounded-xl border-l-4 p-4 ${toneAccent[tone]}`}
     >
       <div className={`pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br ${toneClass[tone]} blur-2xl opacity-60`} />
       <div className="flex items-start justify-between">
@@ -30,7 +37,7 @@ export function StatCard({
           </div>
           {sub && <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>}
         </div>
-        <div className={`grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-secondary/50 ${toneClass[tone].split(" ").pop()}`}>
+        <div className={`grid h-9 w-9 place-items-center rounded-lg border border-primary/35 bg-secondary/50 ${toneClass[tone].split(" ").pop()}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>

@@ -75,7 +75,7 @@ function CaseWorkspace() {
               className={[
                 "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition",
                 tab === t.id
-                  ? "border-primary/60 bg-primary/15 text-primary glow-primary"
+                  ? "border-primary/60 bg-primary/15 text-primary"
                   : "border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >

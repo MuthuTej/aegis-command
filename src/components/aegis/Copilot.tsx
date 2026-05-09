@@ -54,7 +54,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
   useImperativeHandle(ref, () => ({ send }), [send]);
 
   const header = (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/40 px-4 py-3">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-primary/35 px-4 py-3">
       <div className="flex items-center gap-3">
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
           <Sparkles className="h-4 w-4" />
@@ -65,7 +65,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
             {variant === "embedded" ? "briefing session · C-2041" : "holographic assistant · online"}
           </div>
         </div>
-        <Badge variant="secondary" className="hidden border border-border/60 bg-secondary/40 sm:inline-flex">
+        <Badge variant="secondary" className="hidden border border-primary/35 bg-secondary/40 sm:inline-flex">
           Live
         </Badge>
       </div>
@@ -86,7 +86,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
               "rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
               m.who === "user"
                 ? "bg-primary/18 text-foreground ring-1 ring-primary/20"
-                : "border border-border/45 bg-secondary/35 font-mono text-[12.5px] text-foreground/95",
+                : "border border-primary/30 bg-secondary/35 font-mono text-[12.5px] text-foreground/95",
             ].join(" ")}
           >
             {m.who === "ai" && (
@@ -110,7 +110,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
             key={s}
             type="button"
             onClick={() => send(s)}
-            className="rounded-full border border-border/55 bg-background/40 px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/45 hover:text-primary"
+            className="rounded-full border border-primary/35 bg-background/40 px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/55 hover:text-primary"
           >
             {s}
           </button>
@@ -122,7 +122,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send(input)}
           placeholder="Ask AEGIS…"
-          className="h-10 flex-1 border-border/55 bg-input/50 font-mono text-xs focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+          className="h-10 flex-1 border-primary/35 bg-input/50 font-mono text-xs focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
         />
         <Button
           variant="secondary"
@@ -139,7 +139,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
 
   const shellClass =
     variant === "embedded"
-      ? "flex h-full min-h-[min(560px,calc(100vh-10rem))] flex-col overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-b from-card/70 via-background/50 to-background/80 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] scanline"
+      ? "flex h-full min-h-[min(560px,calc(100vh-10rem))] flex-col overflow-hidden rounded-2xl border-2 border-primary/45 bg-card scanline"
       : "glass-strong flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl";
 
   const inner = (
@@ -159,7 +159,7 @@ export const Copilot = forwardRef<CopilotHandle, CopilotProps>(function Copilot(
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-linear-to-br from-primary to-neon-2 text-primary-foreground shadow-lg neon-border glow-primary animate-float"
+        className="fixed bottom-5 right-5 z-40 grid h-12 w-12 place-items-center rounded-full border-2 border-neon-2/55 bg-primary text-primary-foreground animate-float"
         aria-label={open ? "Close AEGIS Copilot" : "Open AEGIS Copilot"}
       >
         <Bot className="h-5 w-5" />

@@ -22,7 +22,7 @@ const items = [
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <aside className="z-20 flex w-[68px] shrink-0 flex-col items-center justify-between border-r border-border/40 bg-sidebar/80 py-4 backdrop-blur-xl">
+    <aside className="z-20 flex w-[68px] shrink-0 flex-col items-center justify-between border-r border-sidebar-border bg-sidebar/80 py-4 backdrop-blur-xl">
       <div className="flex flex-col items-center gap-2">
         <Link to="/" className="group relative mb-3 grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-primary/30 to-neon-2/30 neon-border">
           <ShieldHalf className="h-5 w-5 text-primary" />
@@ -39,8 +39,8 @@ export function Sidebar() {
                 className={[
                   "grid h-10 w-10 place-items-center rounded-lg border transition-colors",
                   active
-                    ? "border-primary/50 bg-primary/15 text-primary glow-primary"
-                    : "border-transparent text-muted-foreground hover:border-border hover:bg-secondary/40 hover:text-foreground",
+                    ? "border-primary/50 bg-primary/15 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-primary/35 hover:bg-secondary/40 hover:text-foreground",
                 ].join(" ")}
               >
                 <Icon className="h-[18px] w-[18px]" />
@@ -55,7 +55,9 @@ export function Sidebar() {
 
       <div className="flex flex-col items-center gap-2">
         <div className="relative">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary/40 to-neon-2/40 text-xs font-semibold">RK</div>
+          <div className="grid h-10 w-10 place-items-center rounded-full border border-neon-2/45 bg-primary/20 text-xs font-semibold text-sidebar-foreground">
+            RK
+          </div>
           <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success ring-2 ring-sidebar animate-pulse-ring" />
         </div>
       </div>
