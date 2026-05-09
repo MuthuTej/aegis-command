@@ -1,4 +1,4 @@
-import { hypotheses } from "@/data/mock";
+import { hypotheses } from "@/data/data";
 import { Sparkles, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 

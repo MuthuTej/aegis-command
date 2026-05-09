@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, Mic, Sparkles, Filter, ChevronDown, Bell } from "lucide-react";
 import { motion } from "framer-motion";
-import { districts } from "@/data/mock";
+import { districts } from "@/data/data";
 import { searchCommandBar } from "@/lib/command-search";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

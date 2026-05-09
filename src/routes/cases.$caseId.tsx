@@ -8,7 +8,7 @@ import { MovementMap } from "@/components/aegis/MovementMap";
 import { AutopsyPanel } from "@/components/aegis/AutopsyPanel";
 import { Copilot } from "@/components/aegis/Copilot";
 import { WhatIfPanel } from "@/components/aegis/WhatIfPanel";
-import { cases, similarCases, evidenceVault } from "@/data/mock";
+import { cases, similarCases, evidenceVault } from "@/data/data";
 import { ChevronLeft, GitBranch, Layers, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { ReactFlowProvider } from "reactflow";

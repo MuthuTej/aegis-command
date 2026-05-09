@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cases, districts } from "@/data/mock";
+import { cases, districts } from "@/data/data";
 import {
   Bar,
   BarChart,

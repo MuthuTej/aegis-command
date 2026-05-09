@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/aegis/Shell";
-import { officers } from "@/data/mock";
+import { officers } from "@/data/data";
 
 export const Route = createFileRoute("/officers")({
   head: () => ({ meta: [{ title: "Officers — AEGIS" }, { name: "description", content: "Investigation officer directory." }] }),

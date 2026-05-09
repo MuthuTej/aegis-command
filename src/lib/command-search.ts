@@ -6,7 +6,7 @@ import {
   evidenceVault,
   heatmapZones,
   officers,
-} from "@/data/mock";
+} from "@/data/data";
 
 export type CommandSearchHit = {
   id: string;

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/aegis/Shell";
-import { liveFeed, contradictions } from "@/data/mock";
+import { liveFeed, contradictions } from "@/data/data";
 
 export const Route = createFileRoute("/alerts")({
   head: () => ({ meta: [{ title: "Alerts — AEGIS" }, { name: "description", content: "AI alerts and contradictions." }] }),

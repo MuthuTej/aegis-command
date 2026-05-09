@@ -5,7 +5,7 @@ import { Copilot, type CopilotHandle } from "@/components/aegis/Copilot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { contradictions, evidenceVault } from "@/data/mock";
+import { contradictions, evidenceVault } from "@/data/data";
 import { ChevronRight, FileText, Zap } from "lucide-react";
 
 const BRIEF_PROMPTS = [
@@ -67,7 +67,7 @@ function CopilotRoutePage() {
               <Badge variant="outline" className="border-primary/30 font-mono text-[10px]">
                 C-2041
               </Badge>
-              <span className="text-xs text-muted-foreground">Investigation briefing · mock corpus</span>
+              <span className="text-xs text-muted-foreground">Investigation briefing · evidence corpus</span>
             </div>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Chat runs in-page. Use the rail for one-click prompts; elsewhere in the app the floating assistant stays available on case views.

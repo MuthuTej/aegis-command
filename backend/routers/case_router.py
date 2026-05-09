@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from services.autopsy_service import autopsy_service
-from services.mock_generator import generate_mock_timeline, generate_mock_movement
+from services.data_generator import generate_timeline, generate_movement
 
 router = APIRouter()
 
@@ -44,16 +44,16 @@ def get_autopsy(cpr_number: str):
 @router.get("/cases/{case_id}/timeline")
 def get_case_timeline(case_id: str):
     """
-    Returns mocked time-series log events for the given case.
+    Returns time-series log events for the given case.
     """
-    return {"case_id": case_id, "timeline": generate_mock_timeline(case_id)}
+    return {"case_id": case_id, "timeline": generate_timeline(case_id)}
 
 @router.get("/cases/{case_id}/movement")
 def get_case_movement(case_id: str):
     """
-    Returns mocked geospatial GPS routes.
+    Returns geospatial GPS routes.
     """
-    return {"case_id": case_id, "movement": generate_mock_movement(case_id)}
+    return {"case_id": case_id, "movement": generate_movement(case_id)}
 
 import chromadb
 import os
@@ -63,7 +63,7 @@ PERSIST_DIRECTORY = os.path.join(os.path.dirname(__file__), "../chroma_data")
 @router.get("/search")
 def search_evidence(query: str, n_results: int = 5):
     """
-    Query the mock ChromaDB for evidence relationships.
+    Query ChromaDB for evidence relationships.
     """
     try:
         client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
