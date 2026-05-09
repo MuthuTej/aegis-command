@@ -1,8 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import case_router
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="AEGIS Mock Backend API")
+from routers import case_router
+from routers import pmi_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    pmi_router.load_model()
+    yield  # app runs here
+
+app = FastAPI(
+    title="AEGIS Backend API with PMI Prediction",
+    description="Predict Postmortem Interval and serve AEGIS evidence graph.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 # Configure CORS for Vite frontend
 app.add_middleware(
@@ -14,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(case_router.router, prefix="/api")
+app.include_router(pmi_router.router, prefix="/pmi")
 
 @app.get("/")
 def read_root():
