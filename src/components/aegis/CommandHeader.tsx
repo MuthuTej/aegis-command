@@ -3,11 +3,13 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, Mic, Sparkles, Filter, ChevronDown, Bell } from "lucide-react";
 import { motion } from "framer-motion";
 import { districts } from "@/data/data";
+import { useDistrictFilter } from "@/contexts/DistrictFilterContext";
 import { searchCommandBar } from "@/lib/command-search";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function CommandHeader() {
+  const { district, setDistrict } = useDistrictFilter();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -163,15 +165,23 @@ export function CommandHeader() {
       </form>
 
       <div className="ml-auto flex items-center gap-2">
-        <button className="flex items-center gap-1.5 rounded-md border border-border/60 bg-secondary/40 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-          <Filter className="h-3.5 w-3.5" /> All districts
-          <ChevronDown className="h-3 w-3" />
-        </button>
-        <select className="rounded-md border border-primary/30 bg-secondary/40 px-2 py-1.5 text-xs">
-          {districts.map((d) => (
-            <option key={d}>{d}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-secondary/40 px-2 py-1">
+          <Filter className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <select
+            aria-label="Filter maps and dashboards by district"
+            value={district ?? ""}
+            onChange={(e) => setDistrict(e.target.value || null)}
+            className="max-w-[9rem] cursor-pointer bg-transparent py-0.5 text-xs outline-none"
+          >
+            <option value="">All districts</option>
+            {districts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+        </div>
         <select className="rounded-md border border-primary/30 bg-secondary/40 px-2 py-1.5 text-xs">
           <option>All severities</option>
           <option>Critical</option>

@@ -1,37 +1,81 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import { heatmapZones } from "@/data/data";
+import { useDistrictFilter } from "@/contexts/DistrictFilterContext";
+
+const TN_OVERVIEW: [number, number] = [11.1271, 78.6569];
+const TN_ZOOM = 6;
 
 export function RiskMap() {
+  const { district: districtFilter } = useDistrictFilter();
   const ref = useRef<HTMLDivElement>(null);
+
+  const zones = useMemo(
+    () =>
+      districtFilter ? heatmapZones.filter((z) => z.district === districtFilter) : heatmapZones,
+    [districtFilter],
+  );
+
   useEffect(() => {
     if (!ref.current) return;
+
     const map = L.map(ref.current, {
-      center: [11.1271, 78.6569],
-      zoom: 6,
+      center: TN_OVERVIEW,
+      zoom: TN_ZOOM,
       scrollWheelZoom: false,
       zoomControl: false,
       attributionControl: false,
     });
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    heatmapZones.forEach((z) => {
+
+    zones.forEach((z) => {
       const r = 8 + (z.risk / 100) * 22;
       const color = z.risk > 80 ? "#ff4d6d" : z.risk > 60 ? "#ffb454" : "#5fd4ff";
-      const m = L.circleMarker([z.lat, z.lng], { radius: r, color, fillColor: color, fillOpacity: 0.35, weight: 2 }).addTo(map);
+      const m = L.circleMarker([z.lat, z.lng], {
+        radius: r,
+        color,
+        fillColor: color,
+        fillOpacity: districtFilter ? 0.5 : 0.35,
+        weight: districtFilter ? 3 : 2,
+      }).addTo(map);
       m.bindTooltip(
         `<div style="font-size:11px"><b>${z.district}</b><br/>Crimes: ${z.crimes}<br/>Risk: ${z.risk}<br/>Officers: ${z.officers}</div>`,
-        { direction: "top" }
+        { direction: "top" },
       );
     });
-    return () => { map.remove(); };
-  }, []);
+
+    if (zones.length === 1) {
+      map.setView([zones[0].lat, zones[0].lng], 9);
+    } else if (zones.length > 1) {
+      const bounds = L.latLngBounds(
+        zones.map((z) => [z.lat, z.lng] as [number, number]),
+      );
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: districtFilter ? 10 : 8 });
+    } else {
+      map.setView(TN_OVERVIEW, TN_ZOOM);
+    }
+
+    return () => {
+      map.remove();
+    };
+  }, [districtFilter, zones]);
+
+  const labelDistrict = districtFilter ?? "Tamil Nadu";
+  const missingData = Boolean(districtFilter && zones.length === 0);
+
   return (
     <div className="relative h-[360px] overflow-hidden rounded-xl border border-border/50">
       <div ref={ref} className="h-full w-full" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-primary/20" />
       <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-md border border-border/60 bg-background/70 px-2 py-1 text-[10px] uppercase tracking-widest text-muted-foreground backdrop-blur">
-        AI Risk Heatmap · Tamil Nadu
+        AI Risk Heatmap · {labelDistrict}
       </div>
+      {missingData && (
+        <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[500] rounded-md border border-warn/40 bg-background/90 px-3 py-2 text-center text-[11px] text-muted-foreground backdrop-blur">
+          No demo risk centroid for <span className="font-medium text-foreground">{districtFilter}</span>.
+          Choose another district or clear the filter.
+        </div>
+      )}
     </div>
   );
 }
