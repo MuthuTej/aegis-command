@@ -1,20 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from routers import case_router, cctv_router, pmi_router
+import logging
 
-from routers import case_router
-from routers import pmi_router
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    pmi_router.load_model()
-    yield  # app runs here
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
+logger = logging.getLogger("aegis")
 
 app = FastAPI(
-    title="AEGIS Backend API with PMI Prediction",
-    description="Predict Postmortem Interval and serve AEGIS evidence graph.",
-    version="1.0.0",
-    lifespan=lifespan,
+    title="AEGIS Command Backend API",
+    description="Forensic intelligence system — Case management, PMI prediction, and CCTV analysis",
+    version="2.0.0",
 )
 
 # Configure CORS for Vite frontend
@@ -26,9 +25,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── Register Routers ────────────────────────────────────────────────────────
 app.include_router(case_router.router, prefix="/api")
-app.include_router(pmi_router.router, prefix="/pmi")
+app.include_router(pmi_router.router, prefix="/api/pmi", tags=["PMI Prediction"])
+app.include_router(cctv_router.router, prefix="/api/cctv", tags=["CCTV Analysis"])
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("AEGIS Command Backend starting up...")
+    logger.info("  → Case management module: ACTIVE")
+    logger.info("  → PMI prediction module: ACTIVE")
+    logger.info("  → CCTV forensic analysis module: ACTIVE")
+
+    # Auto-load PMI model on startup
+    try:
+        from routers.pmi_router import load_model
+        load_model()
+    except Exception as e:
+        logger.warning(f"PMI model auto-load skipped: {e}")
 
 @app.get("/")
 def read_root():
-    return {"message": "AEGIS Backend is running. Access /docs for Swagger UI."}
+    return {"message": "AEGIS Command Backend is running. Access /docs for Swagger UI."}
+
