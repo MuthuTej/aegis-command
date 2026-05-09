@@ -164,9 +164,32 @@ function HotspotMarker({ hs, active, layer, onClick }: {
   );
 }
 
+// ── Fixed card positions for each critical hotspot ────────────────────────
+
+const CRITICAL_CARD: Record<string, {
+  style: React.CSSProperties;
+  lineX: number; lineY: number;   // % endpoint of connector line on card side
+}> = {
+  brain:   { style: { right: "4px", top: "1%"  }, lineX: 98, lineY: 8  },
+  liver:   { style: { right: "4px", top: "33%" }, lineX: 98, lineY: 37 },
+  abdomen: { style: { left:  "4px", top: "46%" }, lineX: 2,  lineY: 52 },
+};
+
+function dynCardStyle(hs: Hotspot): React.CSSProperties {
+  return {
+    left:  hs.x > 50 ? "4px"  : undefined,
+    right: hs.x <= 50 ? "4px" : undefined,
+    top: `${Math.max(4, Math.min(hs.y, 60))}%`,
+  };
+}
+
 // ── Forensic detail card ───────────────────────────────────────────────────
 
-function ForensicCard({ hs, onClose }: { hs: Hotspot; onClose: () => void }) {
+function ForensicCard({ hs, cardStyle, onClose }: {
+  hs: Hotspot;
+  cardStyle: React.CSSProperties;
+  onClose: () => void;
+}) {
   const c = SEV[hs.severity];
   return (
     <motion.div
@@ -179,9 +202,7 @@ function ForensicCard({ hs, onClose }: { hs: Hotspot; onClose: () => void }) {
         background: "rgba(4,9,26,0.92)",
         borderColor: c.ring + "70",
         boxShadow: `0 0 28px ${c.glow}30`,
-        left: hs.x > 50 ? "4px" : undefined,
-        right: hs.x <= 50 ? "4px" : undefined,
-        top: `${Math.max(4, Math.min(hs.y, 60))}%`,
+        ...cardStyle,
       }}
     >
       <button onClick={onClose}
@@ -291,12 +312,10 @@ function ScanLine() {
 
 // ── Connection lines SVG overlay ───────────────────────────────────────────
 
-function ConnectionLines({ selected, containerRef }: { selected: Hotspot | null; containerRef: React.RefObject<HTMLDivElement | null> }) {
-  if (!selected) return null;
-  const cardX = selected.x <= 50 ? 96 : 4;
-  const cardY = Math.max(4, Math.min(selected.y, 60));
-  const lineColor = SEV[selected.severity].ring;
+interface ActiveCard { hs: Hotspot; x2: number; y2: number }
 
+function ConnectionLines({ cards }: { cards: ActiveCard[] }) {
+  if (cards.length === 0) return null;
   return (
     <svg className="absolute inset-0 pointer-events-none z-30" width="100%" height="100%">
       <defs>
@@ -305,14 +324,21 @@ function ConnectionLines({ selected, containerRef }: { selected: Hotspot | null;
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
-      <line
-        x1={`${selected.x}%`} y1={`${selected.y}%`}
-        x2={`${cardX}%`}      y2={`${cardY + 8}%`}
-        stroke={lineColor} strokeWidth="1" strokeOpacity="0.65" strokeDasharray="4 3"
-        filter="url(#line-glow)"
-      />
-      <circle cx={`${selected.x}%`} cy={`${selected.y}%`} r="3"
-        fill={lineColor} opacity="0.7" filter="url(#line-glow)" />
+      {cards.map(({ hs, x2, y2 }) => {
+        const col = SEV[hs.severity].ring;
+        return (
+          <g key={hs.id}>
+            <line
+              x1={`${hs.x}%`} y1={`${hs.y}%`}
+              x2={`${x2}%`}   y2={`${y2}%`}
+              stroke={col} strokeWidth="1" strokeOpacity="0.65" strokeDasharray="4 3"
+              filter="url(#line-glow)"
+            />
+            <circle cx={`${hs.x}%`} cy={`${hs.y}%`} r="3"
+              fill={col} opacity="0.7" filter="url(#line-glow)" />
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -477,15 +503,47 @@ function Label({ children }: { children: React.ReactNode }) {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function AutopsyPanel() {
-  const [selected, setSelected] = useState<Hotspot | null>(null);
+  // Critical cards start open; track which ones the user has manually closed
+  const [closedCriticals, setClosedCriticals] = useState<Set<string>>(new Set());
+  // Single dynamic card for medium / low severity hotspots
+  const [dynSelected, setDynSelected] = useState<Hotspot | null>(null);
   const [layer, setLayer] = useState<Layer>("organs");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const layerTint = LAYERS.find(l => l.id === layer)?.tint;
 
   function toggle(hs: Hotspot) {
-    setSelected(prev => prev?.id === hs.id ? null : hs);
+    if (hs.severity === "critical") {
+      setClosedCriticals(prev => {
+        const next = new Set(prev);
+        if (next.has(hs.id)) next.delete(hs.id); else next.add(hs.id);
+        return next;
+      });
+    } else {
+      setDynSelected(prev => prev?.id === hs.id ? null : hs);
+    }
   }
+
+  // Build list of active cards for connection-line rendering
+  const criticalCards: ActiveCard[] = HOTSPOTS
+    .filter(h => h.severity === "critical" && !closedCriticals.has(h.id))
+    .map(h => {
+      const cfg = CRITICAL_CARD[h.id];
+      return { hs: h, x2: cfg?.lineX ?? 98, y2: cfg?.lineY ?? h.y };
+    });
+
+  const dynCard: ActiveCard | null = dynSelected
+    ? {
+        hs: dynSelected,
+        x2: dynSelected.x <= 50 ? 96 : 4,
+        y2: Math.max(4, Math.min(dynSelected.y + 8, 68)),
+      }
+    : null;
+
+  const allActiveCards = dynCard ? [...criticalCards, dynCard] : criticalCards;
+
+  // For RightPanel highlight: any active card
+  const anySelected = dynSelected ?? (criticalCards[0]?.hs ?? null);
 
   return (
     <motion.div
@@ -525,7 +583,7 @@ export function AutopsyPanel() {
           ref={containerRef}
           className="relative bg-black overflow-hidden flex items-center justify-center"
           style={{ minHeight: 580 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDynSelected(null); }}
         >
           {/* Anatomy base image */}
           <img
@@ -556,16 +614,40 @@ export function AutopsyPanel() {
           ))}
 
           {/* Hotspot markers */}
-          {HOTSPOTS.map(hs => (
-            <HotspotMarker key={hs.id} hs={hs} active={selected?.id === hs.id} layer={layer} onClick={() => toggle(hs)} />
-          ))}
+          {HOTSPOTS.map(hs => {
+            const isActive =
+              (hs.severity === "critical" && !closedCriticals.has(hs.id)) ||
+              dynSelected?.id === hs.id;
+            return (
+              <HotspotMarker key={hs.id} hs={hs} active={isActive} layer={layer} onClick={() => toggle(hs)} />
+            );
+          })}
 
-          {/* Connection line from hotspot to card */}
-          <ConnectionLines selected={selected} containerRef={containerRef} />
+          {/* Connection lines — one per active card */}
+          <ConnectionLines cards={allActiveCards} />
 
-          {/* Detail card */}
+          {/* Critical cards — always open unless manually closed */}
           <AnimatePresence>
-            {selected && <ForensicCard key={selected.id} hs={selected} onClose={() => setSelected(null)} />}
+            {HOTSPOTS.filter(h => h.severity === "critical" && !closedCriticals.has(h.id)).map(h => (
+              <ForensicCard
+                key={h.id}
+                hs={h}
+                cardStyle={CRITICAL_CARD[h.id]?.style ?? { right: "4px", top: "2%" }}
+                onClose={() => toggle(h)}
+              />
+            ))}
+          </AnimatePresence>
+
+          {/* Dynamic card for medium / low on click */}
+          <AnimatePresence>
+            {dynSelected && (
+              <ForensicCard
+                key={dynSelected.id}
+                hs={dynSelected}
+                cardStyle={dynCardStyle(dynSelected)}
+                onClose={() => setDynSelected(null)}
+              />
+            )}
           </AnimatePresence>
 
           {/* Bottom scan label */}
@@ -577,7 +659,7 @@ export function AutopsyPanel() {
         </div>
 
         {/* Right */}
-        <RightPanel selected={selected} onSelect={toggle} />
+        <RightPanel selected={anySelected} onSelect={toggle} />
       </div>
 
       {/* ── Bottom injury table ── */}
