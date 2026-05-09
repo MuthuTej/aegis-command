@@ -2,15 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { heatmapZones, movementPath } from "@/data/data";
 import { useDistrictFilter } from "@/contexts/DistrictFilterContext";
+import { MapInteractChrome } from "@/components/aegis/MapInteractChrome";
 import { fetchMovement, type MovementPoint } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 /** Mock movement replay is anchored to case C-2041 (Chennai). */
 const MOVEMENT_DISTRICT = "Chennai";
 
 function buildMap(container: HTMLDivElement, points: MovementPoint[]) {
   const map = L.map(container, {
-    center: [13.082, 80.275], zoom: 14,
-    scrollWheelZoom: false, zoomControl: false, attributionControl: false,
+    center: [13.082, 80.275],
+    zoom: 14,
+    scrollWheelZoom: true,
+    zoomControl: false,
+    attributionControl: false,
   });
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
@@ -58,6 +63,9 @@ function legacyToPoints(path: typeof movementPath): MovementPoint[] {
 export function MovementMap() {
   const { district: districtFilter } = useDistrictFilter();
   const ref = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const [points, setPoints] = useState<MovementPoint[]>(legacyToPoints(movementPath));
 
   const showReplay =
@@ -74,6 +82,7 @@ export function MovementMap() {
 
     const effectivePoints = showReplay ? points : [];
     const map = buildMap(ref.current, effectivePoints);
+    mapRef.current = map;
 
     if (!showReplay && districtFilter) {
       const z = heatmapZones.find((x) => x.district === districtFilter);
@@ -82,21 +91,29 @@ export function MovementMap() {
     }
 
     return () => {
+      mapRef.current = null;
       map.remove();
     };
   }, [points, showReplay, districtFilter]);
 
   return (
-    <div className="relative h-[500px] w-full overflow-hidden rounded-xl border border-border/50">
-      <div ref={ref} className="h-full w-full" />
+    <div
+      ref={shellRef}
+      className={cn(
+        "relative w-full overflow-hidden rounded-xl border border-border/50 bg-background",
+        fullscreen ? "h-screen max-h-[100dvh] rounded-none" : "h-[500px]",
+      )}
+    >
+      <div ref={ref} className="h-full w-full min-h-[200px]" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-primary/20" />
-      <div className="pointer-events-none absolute left-3 top-3 z-[500] flex flex-col gap-2 rounded-md border border-border/60 bg-background/70 px-3 py-2 text-[10px] backdrop-blur shadow-xl">
+      <MapInteractChrome shellRef={shellRef} mapRef={mapRef} onFullscreenChange={setFullscreen} />
+      <div className="pointer-events-none absolute left-3 top-3 z-[500] max-w-[calc(100%-5rem)] flex flex-col gap-2 rounded-md border border-border/60 bg-background/70 px-3 py-2 text-[10px] backdrop-blur shadow-xl">
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full shadow-[0_0_8px_#5fd4ff]" style={{ backgroundColor: "#5fd4ff" }} /> Victim</span>
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full shadow-[0_0_8px_#ff4d6d]" style={{ backgroundColor: "#ff4d6d" }} /> Suspect (S-118)</span>
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full shadow-[0_0_8px_#f59e0b]" style={{ backgroundColor: "#f59e0b" }} /> Crime Scene</span>
       </div>
       {!showReplay && districtFilter && (
-        <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[500] rounded-md border border-primary/35 bg-background/85 px-3 py-2 text-center text-[11px] text-muted-foreground backdrop-blur">
+        <div className="pointer-events-none absolute bottom-3 left-3 right-16 z-[500] rounded-md border border-primary/35 bg-background/85 px-3 py-2 text-center text-[11px] text-muted-foreground backdrop-blur">
           Movement replay is only modeled for <span className="font-medium text-foreground">{MOVEMENT_DISTRICT}</span> (C-2041).
           Map centered on <span className="font-medium text-foreground">{districtFilter}</span>.
         </div>
