@@ -57,13 +57,13 @@ function Index() {
               className="hidden"
               onChange={handleUpload}
             />
-            <button
+            {/* <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 rounded-lg bg-cyan-600/20 border border-cyan-500/50 px-4 py-2 text-sm font-bold text-cyan-300 transition-colors hover:bg-cyan-500/30"
             >
               <Upload className="h-4 w-4" />
               Add Autopsy Report
-            </button>
+            </button> */}
           </div>
         </div>
 

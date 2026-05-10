@@ -14,7 +14,7 @@ const items = [
   { to: "/copilot", label: "AI Copilot", icon: Bot },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/reports", label: "Reports", icon: FileBarChart },
-  { to: "/settings", label: "Settings", icon: Settings },
+  // { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 export function Sidebar() {
