@@ -3,9 +3,7 @@ import {
   caseGraph,
   cases,
   districts,
-  evidenceVault,
   heatmapZones,
-  officers,
 } from "@/data/data";
 
 export type CommandSearchHit = {
@@ -58,29 +56,7 @@ export function searchCommandBar(raw: string): CommandSearchHit[] {
     }
   }
 
-  for (const e of evidenceVault) {
-    if (matches(hay(e.id, e.name, e.case, e.type, e.ai, e.status))) {
-      push({
-        id: `ev-${e.id}`,
-        kind: "Evidence",
-        title: e.name,
-        subtitle: `${e.id} · Case ${e.case}`,
-        to: "/evidence",
-      });
-    }
-  }
 
-  for (const o of officers) {
-    if (matches(hay(o.id, o.name, o.district))) {
-      push({
-        id: `off-${o.id}`,
-        kind: "Officer",
-        title: o.name,
-        subtitle: `${o.id} · ${o.district}`,
-        to: "/officers",
-      });
-    }
-  }
 
   for (const n of caseGraph.nodes) {
     if (
@@ -144,9 +120,7 @@ export function searchCommandBar(raw: string): CommandSearchHit[] {
       { keys: ["alert"], title: "Alerts", subtitle: "Signal queue", to: "/alerts" },
       { keys: ["setting"], title: "Settings", subtitle: "Workspace", to: "/settings" },
       { keys: ["heatmap", "heat map"], title: "Risk heatmaps", subtitle: "District risk", to: "/heatmap" },
-      { keys: ["vault"], title: "Evidence Vault", subtitle: "All exhibits", to: "/evidence" },
       { keys: ["cases"], title: "All cases", subtitle: "Registry", to: "/cases" },
-      { keys: ["officers", "officer roster"], title: "Officers", subtitle: "Roster & districts", to: "/officers" },
       { keys: ["graph", "investigation"], title: "Investigation graph", subtitle: "C-2041 network view", to: "/cases/C-2041" },
     ];
     for (const n of nav) {

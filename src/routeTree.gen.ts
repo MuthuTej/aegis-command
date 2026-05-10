@@ -12,9 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as OfficersRouteImport } from './routes/officers'
 import { Route as HeatmapRouteImport } from './routes/heatmap'
-import { Route as EvidenceRouteImport } from './routes/evidence'
 import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
@@ -36,19 +34,9 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OfficersRoute = OfficersRouteImport.update({
-  id: '/officers',
-  path: '/officers',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HeatmapRoute = HeatmapRouteImport.update({
   id: '/heatmap',
   path: '/heatmap',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EvidenceRoute = EvidenceRouteImport.update({
-  id: '/evidence',
-  path: '/evidence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CopilotRoute = CopilotRouteImport.update({
@@ -81,9 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
   '/copilot': typeof CopilotRoute
-  '/evidence': typeof EvidenceRoute
   '/heatmap': typeof HeatmapRoute
-  '/officers': typeof OfficersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/timeline': typeof TimelineRoute
@@ -94,9 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
   '/copilot': typeof CopilotRoute
-  '/evidence': typeof EvidenceRoute
   '/heatmap': typeof HeatmapRoute
-  '/officers': typeof OfficersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/timeline': typeof TimelineRoute
@@ -108,9 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
   '/copilot': typeof CopilotRoute
-  '/evidence': typeof EvidenceRoute
   '/heatmap': typeof HeatmapRoute
-  '/officers': typeof OfficersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/timeline': typeof TimelineRoute
@@ -123,9 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alerts'
     | '/copilot'
-    | '/evidence'
     | '/heatmap'
-    | '/officers'
     | '/reports'
     | '/settings'
     | '/timeline'
@@ -136,9 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alerts'
     | '/copilot'
-    | '/evidence'
     | '/heatmap'
-    | '/officers'
     | '/reports'
     | '/settings'
     | '/timeline'
@@ -149,9 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alerts'
     | '/copilot'
-    | '/evidence'
     | '/heatmap'
-    | '/officers'
     | '/reports'
     | '/settings'
     | '/timeline'
@@ -163,9 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlertsRoute: typeof AlertsRoute
   CopilotRoute: typeof CopilotRoute
-  EvidenceRoute: typeof EvidenceRoute
   HeatmapRoute: typeof HeatmapRoute
-  OfficersRoute: typeof OfficersRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TimelineRoute: typeof TimelineRoute
@@ -196,25 +170,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/officers': {
-      id: '/officers'
-      path: '/officers'
-      fullPath: '/officers'
-      preLoaderRoute: typeof OfficersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/heatmap': {
       id: '/heatmap'
       path: '/heatmap'
       fullPath: '/heatmap'
       preLoaderRoute: typeof HeatmapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/evidence': {
-      id: '/evidence'
-      path: '/evidence'
-      fullPath: '/evidence'
-      preLoaderRoute: typeof EvidenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/copilot': {
@@ -259,9 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlertsRoute: AlertsRoute,
   CopilotRoute: CopilotRoute,
-  EvidenceRoute: EvidenceRoute,
   HeatmapRoute: HeatmapRoute,
-  OfficersRoute: OfficersRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TimelineRoute: TimelineRoute,

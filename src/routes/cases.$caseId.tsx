@@ -84,7 +84,7 @@ function CaseWorkspace() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+        <div className={`grid grid-cols-1 gap-4 ${tab === "graph" ? "xl:grid-cols-[1fr_360px]" : ""}`}>
           {/* Center stage */}
           <div className="space-y-4">
             {tab === "graph" && (
@@ -158,12 +158,14 @@ function CaseWorkspace() {
             </div>
           </div>
 
-          {/* Right rail */}
+          {/* Right rail — only visible on Living Evidence Canvas */}
+          {tab === "graph" && (
           <aside className="space-y-4">
             <HypothesisPanel />
             <ContradictionPanel />
             {/* <WhatIfPanel baseConf={c.aiConfidence} baseContra={c.contradictions} /> */}
           </aside>
+          )}
         </div>
       </div>
       <Copilot />

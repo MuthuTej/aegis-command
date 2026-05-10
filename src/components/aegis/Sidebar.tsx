@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, FolderSearch, Network, Clock, Database, Map,
-  Bot, Users, Bell, FileBarChart, Settings, ShieldHalf,
+  LayoutDashboard, FolderSearch, Network, Clock, Map,
+  Bot, Bell, FileBarChart, Settings, ShieldHalf,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -10,10 +10,8 @@ const items = [
   { to: "/cases", label: "Cases", icon: FolderSearch },
   { to: "/cases/C-2041", label: "Investigation Graph", icon: Network },
   { to: "/timeline", label: "Timeline Replay", icon: Clock },
-  { to: "/evidence", label: "Evidence Vault", icon: Database },
   { to: "/heatmap", label: "Heatmaps", icon: Map },
   { to: "/copilot", label: "AI Copilot", icon: Bot },
-  { to: "/officers", label: "Officers", icon: Users },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/settings", label: "Settings", icon: Settings },
