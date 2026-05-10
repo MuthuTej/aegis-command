@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { fetchTimeline, type TimelineEvent } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -7,6 +7,7 @@ import {
   Banknote, Dna, Car, User, Clock, FlaskConical,
   Hammer, Activity, Radio, Home, MapPin, Target,
   SkipBack, SkipForward, TrendingUp,
+  Upload, X, Loader2, CheckCircle,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -47,19 +48,19 @@ const EVENT_COLORS: Record<EventType, { ring: string; text: string; bg: string; 
 };
 
 const NODE_STYLES: Record<MiniNodeType, { border: string; bg: string; labelColor: string; typeTag: string }> = {
-  victim:   { border: "border-cyan-400/80",    bg: "bg-cyan-950/80",    labelColor: "text-cyan-300",   typeTag: "VICTIM"    },
-  suspect:  { border: "border-red-500/80",     bg: "bg-red-950/80",     labelColor: "text-red-300",    typeTag: "SUSPECT"   },
-  witness:  { border: "border-emerald-400/70", bg: "bg-emerald-950/70", labelColor: "text-emerald-300",typeTag: "WITNESS"   },
-  cctv:     { border: "border-blue-400/60",    bg: "bg-blue-950/70",    labelColor: "text-blue-300",   typeTag: "CCTV"      },
-  phone:    { border: "border-sky-400/60",     bg: "bg-sky-950/70",     labelColor: "text-sky-300",    typeTag: "PHONE"     },
-  forensic: { border: "border-violet-400/60",  bg: "bg-violet-950/70",  labelColor: "text-violet-300", typeTag: "FORENSIC"  },
-  financial:{ border: "border-emerald-400/70", bg: "bg-emerald-950/70", labelColor: "text-emerald-300",typeTag: "FINANCIAL" },
-  dna:      { border: "border-cyan-300/80",    bg: "bg-cyan-950/80",    labelColor: "text-cyan-200",   typeTag: "DNA"       },
-  vehicle:  { border: "border-teal-400/60",    bg: "bg-teal-950/70",    labelColor: "text-teal-300",   typeTag: "VEHICLE"   },
-  anomaly:  { border: "border-orange-500/70",  bg: "bg-orange-950/70",  labelColor: "text-orange-300", typeTag: "ANOMALY"   },
-  weapon:   { border: "border-orange-400/70",  bg: "bg-orange-950/70",  labelColor: "text-orange-300", typeTag: "WEAPON"    },
-  ai:       { border: "border-fuchsia-400/70", bg: "bg-fuchsia-950/70", labelColor: "text-fuchsia-300",typeTag: "AI"        },
-  tower:    { border: "border-sky-400/60",     bg: "bg-sky-950/70",     labelColor: "text-sky-300",    typeTag: "TOWER"     },
+  victim:   { border: "border-cyan-400/80",    bg: "bg-cyan-950/80",    labelColor: "text-cyan-300",    typeTag: "VICTIM"    },
+  suspect:  { border: "border-red-500/80",     bg: "bg-red-950/80",     labelColor: "text-red-300",     typeTag: "SUSPECT"   },
+  witness:  { border: "border-emerald-400/70", bg: "bg-emerald-950/70", labelColor: "text-emerald-300", typeTag: "WITNESS"   },
+  cctv:     { border: "border-blue-400/60",    bg: "bg-blue-950/70",    labelColor: "text-blue-300",    typeTag: "CCTV"      },
+  phone:    { border: "border-sky-400/60",     bg: "bg-sky-950/70",     labelColor: "text-sky-300",     typeTag: "PHONE"     },
+  forensic: { border: "border-violet-400/60",  bg: "bg-violet-950/70",  labelColor: "text-violet-300",  typeTag: "FORENSIC"  },
+  financial:{ border: "border-emerald-400/70", bg: "bg-emerald-950/70", labelColor: "text-emerald-300", typeTag: "FINANCIAL" },
+  dna:      { border: "border-cyan-300/80",    bg: "bg-cyan-950/80",    labelColor: "text-cyan-200",    typeTag: "DNA"       },
+  vehicle:  { border: "border-teal-400/60",    bg: "bg-teal-950/70",    labelColor: "text-teal-300",    typeTag: "VEHICLE"   },
+  anomaly:  { border: "border-orange-500/70",  bg: "bg-orange-950/70",  labelColor: "text-orange-300",  typeTag: "ANOMALY"   },
+  weapon:   { border: "border-orange-400/70",  bg: "bg-orange-950/70",  labelColor: "text-orange-300",  typeTag: "WEAPON"    },
+  ai:       { border: "border-fuchsia-400/70", bg: "bg-fuchsia-950/70", labelColor: "text-fuchsia-300", typeTag: "AI"        },
+  tower:    { border: "border-sky-400/60",     bg: "bg-sky-950/70",     labelColor: "text-sky-300",     typeTag: "TOWER"     },
 };
 
 const NODE_ICON: Record<MiniNodeType, React.ReactNode> = {
@@ -275,9 +276,9 @@ const STEPS: ReplayStep[] = [
     confidence: 89, severity: "critical",
     aiInsight: "Cause of death linked. Iron rod → head trauma → blood sample B-09 chain established. Weapon discarded 100m post-assault.",
     nodes: [
-      { id: "v",  typeKey: "victim",   label: "VICTIM",         sublabel: "R. Suresh"     },
-      { id: "w",  typeKey: "weapon",   label: "Weapon",         sublabel: "Blunt Object"  },
-      { id: "i",  typeKey: "forensic", label: "Injury Pattern", sublabel: "Head Trauma"   },
+      { id: "v",  typeKey: "victim",   label: "VICTIM",            sublabel: "R. Suresh"     },
+      { id: "w",  typeKey: "weapon",   label: "Weapon",            sublabel: "Blunt Object"  },
+      { id: "i",  typeKey: "forensic", label: "Injury Pattern",    sublabel: "Head Trauma"   },
       { id: "b",  typeKey: "dna",      label: "Blood Sample B-09", sublabel: "Partial match" },
     ],
     edges: [
@@ -295,10 +296,162 @@ const STEPS: ReplayStep[] = [
   },
 ];
 
+// ── Upload modal ───────────────────────────────────────────────────────────────
+
+function UploadModal({ onFile, onClose }: { onFile: (f: File) => void; onClose: () => void }) {
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDrag(false);
+    const f = e.dataTransfer.files[0];
+    if (f) onFile(f);
+  }, [onFile]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="absolute inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(2,6,20,0.94)", backdropFilter: "blur(6px)" }}
+      onClick={onClose}
+    >
+      <motion.div initial={{ scale: 0.92, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 16 }}
+        onClick={e => e.stopPropagation()}
+        className="w-[400px] rounded-2xl border border-cyan-500/30 bg-[#060e26] p-6 shadow-2xl"
+        style={{ boxShadow: "0 0 60px rgba(34,211,238,0.1)" }}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="text-[12px] font-black uppercase tracking-[0.18em] text-cyan-400">Add CCTV & Log Data</div>
+            <div className="text-[9px] text-slate-500 mt-0.5">Any format · timeline auto-generated on upload</div>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div
+          onDragOver={e => { e.preventDefault(); setDrag(true); }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
+          className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-7 cursor-pointer transition-all ${
+            drag ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 hover:border-cyan-500/40 hover:bg-cyan-500/5"
+          }`}
+        >
+          <motion.div animate={{ y: drag ? -4 : 0 }} transition={{ duration: 0.2 }}>
+            <Camera className={`h-10 w-10 transition-colors ${drag ? "text-cyan-400" : "text-slate-500"}`} />
+          </motion.div>
+          <div className="text-center">
+            <div className={`text-[11px] font-semibold transition-colors ${drag ? "text-cyan-300" : "text-slate-400"}`}>
+              {drag ? "Release to load CCTV logs" : "Drag & drop CCTV footage or log files"}
+            </div>
+            <div className="text-[9px] text-slate-600 mt-1">or click to browse files</div>
+          </div>
+          <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
+          {drag && (
+            <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+              <motion.div className="absolute left-0 right-0 h-10"
+                style={{ background: "linear-gradient(to bottom, transparent, rgba(34,211,238,0.3), transparent)" }}
+                animate={{ top: ["0%", "100%"] }} transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }} />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-1.5">
+          {["CCTV timestamp extraction","18-step investigation","Suspect tracking","Evidence links","AI hypothesis","Contradiction detection"].map(f => (
+            <div key={f} className="flex items-center gap-1.5 text-[9px] text-slate-400">
+              <div className="h-1 w-1 rounded-full bg-cyan-500/60" />{f}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Simulation overlay ─────────────────────────────────────────────────────────
+
+type SimPhase = "idle" | "analyzing" | "extracting" | "building" | "complete";
+
+const SIM_STEPS: { phase: Exclude<SimPhase,"idle"|"complete">; label: string; pct: number }[] = [
+  { phase: "analyzing",  label: "Analyzing CCTV footage",    pct: 30 },
+  { phase: "extracting", label: "Extracting timestamps",     pct: 65 },
+  { phase: "building",   label: "Building investigation timeline", pct: 90 },
+];
+
+function SimOverlay({ phase, fileName, progress, onDismiss }: {
+  phase: SimPhase; fileName: string; progress: number; onDismiss: () => void;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="absolute inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(2,6,20,0.96)", backdropFilter: "blur(8px)" }}
+    >
+      <div className="w-full max-w-sm px-6 py-5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 border border-cyan-500/30">
+            <Camera className="h-5 w-5 text-cyan-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-black uppercase tracking-[0.15em] text-cyan-400">
+              {phase === "complete" ? "Timeline Ready" : "Processing CCTV & Logs"}
+            </div>
+            <div className="text-[9px] text-slate-500 font-mono mt-0.5 truncate">{fileName}</div>
+          </div>
+          {phase === "complete" && (
+            <button onClick={onDismiss} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+          )}
+        </div>
+
+        <div className="mb-5">
+          <div className="flex justify-between text-[9px] text-slate-500 mb-1.5">
+            <span className="uppercase tracking-wider">{phase === "complete" ? "Done" : "Processing…"}</span>
+            <span className="font-mono text-cyan-400">{progress}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-500"
+              animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {SIM_STEPS.map((s, i) => {
+            const done = progress >= s.pct;
+            const active = phase === s.phase;
+            return (
+              <div key={s.phase} className="flex items-center gap-2.5">
+                <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
+                  done ? "border-emerald-500 bg-emerald-950/60" : active ? "border-cyan-500 bg-cyan-950/40" : "border-white/10"}`}>
+                  {done ? <CheckCircle className="h-3 w-3 text-emerald-400" />
+                        : active ? <Loader2 className="h-3 w-3 text-cyan-400 animate-spin" />
+                        : <span className="text-[8px] text-slate-600">{i + 1}</span>}
+                </div>
+                <span className={`text-[10px] ${done ? "text-emerald-400" : active ? "text-cyan-300" : "text-slate-600"}`}>{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {phase === "complete" && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="mt-5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 flex items-center justify-between"
+          >
+            <div>
+              <div className="text-[10px] font-bold text-emerald-400">Timeline Generated</div>
+              <div className="text-[9px] text-slate-500">{STEPS.length} events · 18-step investigation roadmap</div>
+            </div>
+            <button onClick={onDismiss}
+              className="flex items-center gap-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3 py-1.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
+            >
+              View Timeline <ChevronRight className="h-3 w-3" />
+            </button>
+          </motion.div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Step Badge ────────────────────────────────────────────────────────────────
-function StepBadge({
-  number, eventType, active, past,
-}: { number: number; eventType: EventType; active: boolean; past: boolean }) {
+function StepBadge({ number, eventType, active, past }: { number: number; eventType: EventType; active: boolean; past: boolean }) {
   const c = EVENT_COLORS[eventType];
   return (
     <div className={[
@@ -310,24 +463,17 @@ function StepBadge({
   );
 }
 
-// ── Type Icon ─────────────────────────────────────────────────────────────────
 function TypeIcon({ type, className = "h-3 w-3" }: { type: EventType; className?: string }) {
   const icons: Record<EventType, React.ReactNode> = {
-    movement: <User className={className} />,
-    financial: <Banknote className={className} />,
-    cctv: <Camera className={className} />,
-    phone: <Smartphone className={className} />,
-    witness: <Eye className={className} />,
-    forensic: <FlaskConical className={className} />,
-    ai: <Brain className={className} />,
-    vehicle: <Car className={className} />,
-    analysis: <Activity className={className} />,
-    anomaly: <AlertTriangle className={className} />,
+    movement: <User className={className} />, financial: <Banknote className={className} />,
+    cctv: <Camera className={className} />, phone: <Smartphone className={className} />,
+    witness: <Eye className={className} />, forensic: <FlaskConical className={className} />,
+    ai: <Brain className={className} />, vehicle: <Car className={className} />,
+    analysis: <Activity className={className} />, anomaly: <AlertTriangle className={className} />,
   };
   return <>{icons[type]}</>;
 }
 
-// ── Mini Node Card ────────────────────────────────────────────────────────────
 function MiniNodeCard({ node }: { node: MiniNode }) {
   const s = NODE_STYLES[node.typeKey];
   return (
@@ -335,48 +481,34 @@ function MiniNodeCard({ node }: { node: MiniNode }) {
       <div className="shrink-0">{NODE_ICON[node.typeKey]}</div>
       <div className="min-w-0">
         <div className={`text-[8px] font-bold uppercase tracking-wider ${s.labelColor} leading-none mb-0.5`}>{node.label}</div>
-        {node.sublabel && (
-          <div className="text-[9px] text-slate-300 leading-tight truncate">{node.sublabel}</div>
-        )}
+        {node.sublabel && <div className="text-[9px] text-slate-300 leading-tight truncate">{node.sublabel}</div>}
       </div>
     </div>
   );
 }
 
-// ── Edge Connector ────────────────────────────────────────────────────────────
 function EdgeConnector({ label, type }: { label?: string; type: "solid" | "dashed" | "suspicious" }) {
   const cfg = {
-    solid:      { lineClass: "bg-cyan-400/70",   arrowColor: "text-cyan-400",   glow: false  },
-    dashed:     { lineClass: "bg-white/25",       arrowColor: "text-slate-400",  glow: false  },
-    suspicious: { lineClass: "bg-red-500/80",     arrowColor: "text-red-400",    glow: true   },
+    solid:      { lineClass: "bg-cyan-400/70",   arrowColor: "text-cyan-400",   glow: false },
+    dashed:     { lineClass: "bg-white/25",       arrowColor: "text-slate-400",  glow: false },
+    suspicious: { lineClass: "bg-red-500/80",     arrowColor: "text-red-400",    glow: true  },
   }[type];
-
   return (
     <div className="flex flex-col items-center justify-center w-14 shrink-0 px-1">
-      {label && (
-        <span className="text-[7px] text-slate-400 text-center leading-tight mb-0.5 max-w-[52px] truncate" title={label}>
-          {label}
-        </span>
-      )}
+      {label && <span className="text-[7px] text-slate-400 text-center leading-tight mb-0.5 max-w-[52px] truncate">{label}</span>}
       <div className="flex items-center w-full">
-        <div
-          className={`flex-1 h-px ${type === "dashed" ? "border-t border-dashed border-slate-400/50" : cfg.lineClass}`}
-          style={cfg.glow ? { boxShadow: "0 0 4px rgba(239,68,68,0.5)" } : undefined}
-        />
+        <div className={`flex-1 h-px ${type === "dashed" ? "border-t border-dashed border-slate-400/50" : cfg.lineClass}`}
+          style={cfg.glow ? { boxShadow: "0 0 4px rgba(239,68,68,0.5)" } : undefined} />
         <span className={`text-[11px] leading-none -ml-0.5 ${cfg.arrowColor}`}>›</span>
       </div>
     </div>
   );
 }
 
-// ── Mini Graph Row ────────────────────────────────────────────────────────────
 function MiniGraphRow({ step }: { step: ReplayStep }) {
   if (!step.nodes?.length) return null;
   const { nodes, edges = [] } = step;
-
-  // Build node map for edge lookups
   const edgeFor = (fromId: string) => edges.find(e => e.from === fromId);
-
   return (
     <div className="flex items-center gap-0 flex-nowrap overflow-x-auto">
       {nodes.map((node, i) => (
@@ -384,11 +516,7 @@ function MiniGraphRow({ step }: { step: ReplayStep }) {
           <MiniNodeCard node={node} />
           {i < nodes.length - 1 && (() => {
             const edge = edgeFor(node.id);
-            return edge ? (
-              <EdgeConnector label={edge.label} type={edge.type} />
-            ) : (
-              <div className="w-4 shrink-0" />
-            );
+            return edge ? <EdgeConnector label={edge.label} type={edge.type} /> : <div className="w-4 shrink-0" />;
           })()}
         </React.Fragment>
       ))}
@@ -396,7 +524,6 @@ function MiniGraphRow({ step }: { step: ReplayStep }) {
   );
 }
 
-// ── Special Graph Views ───────────────────────────────────────────────────────
 function AIHypothesisView() {
   return (
     <div className="flex items-center gap-3 w-full">
@@ -404,23 +531,13 @@ function AIHypothesisView() {
         <Brain className="h-4 w-4 text-fuchsia-400 shrink-0 mt-0.5" />
         <div>
           <div className="text-[8px] font-bold uppercase text-fuchsia-400 tracking-wider">AI Hypothesis</div>
-          <div className="text-[10px] text-white font-medium leading-snug mt-0.5">
-            Financial dispute escalated into homicide
-          </div>
+          <div className="text-[10px] text-white font-medium leading-snug mt-0.5">Financial dispute escalated into homicide</div>
         </div>
       </div>
       <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold">Supporting Evidence</div>
       <div className="flex items-center gap-1.5">
-        {[
-          { icon: <Camera className="h-3.5 w-3.5" />, c: "text-blue-400" },
-          { icon: <Dna className="h-3.5 w-3.5" />, c: "text-cyan-400" },
-          { icon: <Car className="h-3.5 w-3.5" />, c: "text-teal-400" },
-          { icon: <FlaskConical className="h-3.5 w-3.5" />, c: "text-violet-400" },
-          { icon: <Eye className="h-3.5 w-3.5" />, c: "text-emerald-400" },
-        ].map((item, i) => (
-          <div key={i} className={`rounded-lg border border-white/10 bg-slate-900/60 p-1.5 ${item.c}`}>
-            {item.icon}
-          </div>
+        {[{ icon: <Camera className="h-3.5 w-3.5" />, c: "text-blue-400" },{ icon: <Dna className="h-3.5 w-3.5" />, c: "text-cyan-400" },{ icon: <Car className="h-3.5 w-3.5" />, c: "text-teal-400" },{ icon: <FlaskConical className="h-3.5 w-3.5" />, c: "text-violet-400" },{ icon: <Eye className="h-3.5 w-3.5" />, c: "text-emerald-400" }].map((item, i) => (
+          <div key={i} className={`rounded-lg border border-white/10 bg-slate-900/60 p-1.5 ${item.c}`}>{item.icon}</div>
         ))}
       </div>
     </div>
@@ -428,48 +545,21 @@ function AIHypothesisView() {
 }
 
 function MovementView() {
-  const waypoints = [
-    { label: "Home",       who: "victim",  dot: "bg-cyan-400" },
-    { label: "",           who: "victim",  dot: "bg-cyan-400" },
-    { label: "E-Gate 4",  who: "both",    dot: "bg-yellow-400" },
-    { label: "",           who: "suspect", dot: "bg-red-500" },
-    { label: "Crime Scene", who: "suspect", dot: "bg-red-500" },
-  ];
   return (
     <div className="w-full">
-      <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold mb-2 text-center">
-        Movement Paths Reconstructed
-      </div>
+      <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold mb-2 text-center">Movement Paths Reconstructed</div>
       <div className="flex items-center justify-between gap-0 px-1">
-        <div className="flex flex-col items-center gap-0.5">
-          <Home className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-[8px] text-slate-400">Home</span>
-        </div>
-        {/* Victim path (cyan) */}
+        <div className="flex flex-col items-center gap-0.5"><Home className="h-3.5 w-3.5 text-slate-400" /><span className="text-[8px] text-slate-400">Home</span></div>
         <div className="flex-1 flex items-center">
-          <div className="flex-1 h-px bg-cyan-400/60" />
-          <div className="h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-400/30" />
-          <div className="flex-1 h-px bg-cyan-400/60" />
-          <div className="h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-400/30" />
-          <div className="flex-1 h-px bg-cyan-400/60" />
+          <div className="flex-1 h-px bg-cyan-400/60" /><div className="h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-400/30" />
+          <div className="flex-1 h-px bg-cyan-400/60" /><div className="h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-400/30" /><div className="flex-1 h-px bg-cyan-400/60" />
         </div>
-        {/* E-Gate 4 */}
-        <div className="flex flex-col items-center gap-0.5">
-          <div className="h-3 w-3 rounded-full bg-yellow-400 ring-2 ring-yellow-400/30" />
-          <span className="text-[7px] text-yellow-400 whitespace-nowrap">E-Gate 4</span>
-        </div>
-        {/* Suspect path (red) - offset below */}
+        <div className="flex flex-col items-center gap-0.5"><div className="h-3 w-3 rounded-full bg-yellow-400 ring-2 ring-yellow-400/30" /><span className="text-[7px] text-yellow-400 whitespace-nowrap">E-Gate 4</span></div>
         <div className="flex-1 flex items-center">
-          <div className="flex-1 h-px bg-red-500/60 mt-2 border-t border-dashed border-red-500/60 bg-transparent" />
-          <div className="h-2 w-2 rounded-full bg-red-500 ring-2 ring-red-500/30 mt-2" />
-          <div className="flex-1 h-px border-t border-dashed border-red-500/60" />
-          <div className="h-2 w-2 rounded-full bg-red-500 ring-2 ring-red-500/30" />
-          <div className="flex-1 h-px border-t border-dashed border-red-500/60" />
+          <div className="flex-1 h-px border-t border-dashed border-red-500/60" /><div className="h-2 w-2 rounded-full bg-red-500 ring-2 ring-red-500/30 mt-2" />
+          <div className="flex-1 h-px border-t border-dashed border-red-500/60" /><div className="h-2 w-2 rounded-full bg-red-500 ring-2 ring-red-500/30" /><div className="flex-1 h-px border-t border-dashed border-red-500/60" />
         </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <MapPin className="h-3.5 w-3.5 text-red-400" />
-          <span className="text-[7px] text-red-400 whitespace-nowrap">Crime Scene</span>
-        </div>
+        <div className="flex flex-col items-center gap-0.5"><MapPin className="h-3.5 w-3.5 text-red-400" /><span className="text-[7px] text-red-400 whitespace-nowrap">Crime Scene</span></div>
       </div>
       <div className="flex justify-between px-8 mt-1">
         <span className="text-[7px] text-cyan-400">— Victim Route</span>
@@ -484,10 +574,7 @@ function ContradictionView() {
     <div className="flex items-center gap-2 w-full">
       <div className="flex items-center gap-1.5 rounded-lg border border-emerald-400/60 bg-emerald-950/60 px-2 py-1.5 shrink-0">
         <Eye className="h-3 w-3 text-emerald-300" />
-        <div>
-          <div className="text-[8px] font-bold text-emerald-300 uppercase">WITNESS</div>
-          <div className="text-[9px] text-slate-300">Anandhi K.</div>
-        </div>
+        <div><div className="text-[8px] font-bold text-emerald-300 uppercase">WITNESS</div><div className="text-[9px] text-slate-300">Anandhi K.</div></div>
       </div>
       <div className="flex flex-col items-center w-16 shrink-0">
         <span className="text-[7px] text-slate-500 mb-0.5">Statement</span>
@@ -499,23 +586,14 @@ function ContradictionView() {
       </div>
       <div className="flex items-center gap-1.5 rounded-lg border border-orange-500/60 bg-orange-950/60 px-2 py-1.5 shrink-0">
         <AlertTriangle className="h-3 w-3 text-orange-400" />
-        <div>
-          <div className="text-[8px] font-bold text-orange-300 uppercase">ANOMALY</div>
-          <div className="text-[9px] text-slate-300">Statement Conflict</div>
-        </div>
+        <div><div className="text-[8px] font-bold text-orange-300 uppercase">ANOMALY</div><div className="text-[9px] text-slate-300">Statement Conflict</div></div>
       </div>
       <div className="flex flex-col items-center w-14 shrink-0">
-        <div className="flex items-center w-full">
-          <div className="flex-1 border-t-2 border-dashed border-red-500/70" />
-          <span className="text-red-400 text-[10px]">›</span>
-        </div>
+        <div className="flex items-center w-full"><div className="flex-1 border-t-2 border-dashed border-red-500/70" /><span className="text-red-400 text-[10px]">›</span></div>
       </div>
       <div className="flex items-center gap-1.5 rounded-lg border border-blue-400/60 bg-blue-950/60 px-2 py-1.5 shrink-0">
         <Camera className="h-3 w-3 text-blue-300" />
-        <div>
-          <div className="text-[8px] font-bold text-blue-300 uppercase">CCTV</div>
-          <div className="text-[9px] text-slate-300">CCTV-CHN-0418</div>
-        </div>
+        <div><div className="text-[8px] font-bold text-blue-300 uppercase">CCTV</div><div className="text-[9px] text-slate-300">CCTV-CHN-0418</div></div>
       </div>
     </div>
   );
@@ -545,7 +623,6 @@ function NarrativeView({ insight }: { insight: string }) {
   );
 }
 
-// ── Center Cell ───────────────────────────────────────────────────────────────
 function CenterCell({ step }: { step: ReplayStep }) {
   if (step.special === "ai-hypothesis") return <AIHypothesisView />;
   if (step.special === "movement")      return <MovementView />;
@@ -554,39 +631,26 @@ function CenterCell({ step }: { step: ReplayStep }) {
   return <MiniGraphRow step={step} />;
 }
 
-// ── AI Insight Cell ───────────────────────────────────────────────────────────
 function InsightCell({ step }: { step: ReplayStep }) {
-  const confColor = step.confidence >= 90 ? "text-emerald-400" :
-    step.confidence >= 70 ? "text-cyan-400" :
-    step.confidence >= 50 ? "text-yellow-400" : "text-red-400";
-
+  const confColor = step.confidence >= 90 ? "text-emerald-400" : step.confidence >= 70 ? "text-cyan-400" : step.confidence >= 50 ? "text-yellow-400" : "text-red-400";
   return (
     <div className="space-y-1.5">
       <p className="text-[10px] leading-snug text-slate-200">{step.aiInsight}</p>
       <div className="flex items-center gap-1.5">
         <div className="flex-1 h-px bg-slate-800" />
-        <span className={`font-mono text-[10px] font-semibold ${confColor}`}>
-          Confidence: {step.confidence}%
-        </span>
+        <span className={`font-mono text-[10px] font-semibold ${confColor}`}>Confidence: {step.confidence}%</span>
       </div>
     </div>
   );
 }
 
-// ── Bottom Legend ─────────────────────────────────────────────────────────────
 const BOTTOM_LEGEND = [
-  { label: "Victim", color: "bg-cyan-400" },
-  { label: "Suspect", color: "bg-red-500" },
-  { label: "Witness", color: "bg-emerald-400" },
-  { label: "Location", color: "bg-blue-400" },
-  { label: "CCTV", color: "bg-slate-400" },
-  { label: "Phone", color: "bg-sky-400" },
-  { label: "Vehicle", color: "bg-teal-400" },
-  { label: "DNA", color: "bg-cyan-300" },
-  { label: "Financial", color: "bg-yellow-400" },
-  { label: "Forensic", color: "bg-violet-400" },
-  { label: "AI Insight", color: "bg-fuchsia-400" },
-  { label: "Anomaly", color: "bg-orange-500" },
+  { label: "Victim", color: "bg-cyan-400" }, { label: "Suspect", color: "bg-red-500" },
+  { label: "Witness", color: "bg-emerald-400" }, { label: "Location", color: "bg-blue-400" },
+  { label: "CCTV", color: "bg-slate-400" }, { label: "Phone", color: "bg-sky-400" },
+  { label: "Vehicle", color: "bg-teal-400" }, { label: "DNA", color: "bg-cyan-300" },
+  { label: "Financial", color: "bg-yellow-400" }, { label: "Forensic", color: "bg-violet-400" },
+  { label: "AI Insight", color: "bg-fuchsia-400" }, { label: "Anomaly", color: "bg-orange-500" },
 ];
 
 function mapSeverity(s: string): ReplayStep["severity"] | undefined {
@@ -599,6 +663,7 @@ function mapSeverity(s: string): ReplayStep["severity"] | undefined {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function TimelineReplay() {
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -606,39 +671,37 @@ export function TimelineReplay() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Fetch backend timeline and merge into STEPS (preserving nodes/edges/special)
+  const [showUpload, setShowUpload] = useState(false);
+  const [simPhase, setSimPhase] = useState<SimPhase>("idle");
+  const [simProgress, setSimProgress] = useState(0);
+  const [fileName, setFileName] = useState("");
+
+  const isSimulating = simPhase !== "idle";
+
   useEffect(() => {
     fetchTimeline("C-2041")
-      .then((r) => setBackendEvents(r.timeline))
-      .catch(() => { /* keep static STEPS */ });
+      .then(r => setBackendEvents(r.timeline))
+      .catch(() => {});
   }, []);
 
   const steps = useMemo<ReplayStep[]>(() => {
     if (backendEvents.length === 0) return STEPS;
-    const byId = new Map(backendEvents.map((e) => [Number(e.id), e]));
-    return STEPS.map((s) => {
+    const byId = new Map(backendEvents.map(e => [Number(e.id), e]));
+    return STEPS.map(s => {
       const b = byId.get(s.id);
       if (!b) return s;
-      return {
-        ...s,
-        time:        b.time        ?? s.time,
-        title:       b.title       ?? s.title,
-        description: b.description ?? s.description,
-        confidence:  b.confidence  ?? s.confidence,
-        severity:    mapSeverity(b.severity) ?? s.severity,
-        aiInsight:   b.aiInsight   ?? s.aiInsight,
-      };
+      return { ...s, time: b.time ?? s.time, title: b.title ?? s.title,
+        description: b.description ?? s.description, confidence: b.confidence ?? s.confidence,
+        severity: mapSeverity(b.severity) ?? s.severity, aiInsight: b.aiInsight ?? s.aiInsight };
     });
   }, [backendEvents]);
 
-  // Auto-scroll to current row
   useEffect(() => {
     rowRefs.current[current]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [current]);
 
-  // Auto-play
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || !dataLoaded) return;
     const delay = 2200 / speed;
     const timer = setInterval(() => {
       setCurrent(prev => {
@@ -647,82 +710,128 @@ export function TimelineReplay() {
       });
     }, delay);
     return () => clearInterval(timer);
-  }, [playing, speed, steps.length]);
+  }, [playing, speed, steps.length, dataLoaded]);
+
+  async function handleFile(file: File) {
+    setShowUpload(false);
+    setFileName(file.name);
+    setSimPhase("analyzing"); setSimProgress(10);
+    await new Promise(r => setTimeout(r, 900));
+    setSimProgress(30);
+    await new Promise(r => setTimeout(r, 500));
+    setSimPhase("extracting"); setSimProgress(50);
+    await new Promise(r => setTimeout(r, 900));
+    setSimProgress(65);
+    await new Promise(r => setTimeout(r, 400));
+    setSimPhase("building"); setSimProgress(80);
+    await new Promise(r => setTimeout(r, 900));
+    setSimProgress(100);
+    setSimPhase("complete");
+  }
+
+  function handleDismiss() {
+    setSimPhase("idle");
+    setDataLoaded(true);
+  }
 
   const step = steps[current];
   const progress = ((current + 1) / steps.length) * 100;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-white/8 bg-[#060a18]" style={{ height: "760px" }}>
+    <div className="relative flex flex-col overflow-hidden rounded-xl border border-white/8 bg-[#060a18]" style={{ height: "760px" }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-white/8 px-4 py-2 shrink-0 bg-slate-950/60">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">Timeline Replay</span>
             <span className="text-[9px] text-slate-600">·</span>
             <span className="text-[10px] font-bold text-slate-400 tracking-widest">Case C-2041</span>
+            {dataLoaded && <span className="rounded border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 font-mono text-[9px] text-emerald-400 flex items-center gap-1"><CheckCircle className="h-2.5 w-2.5" />{steps.length} EVENTS</span>}
           </div>
           <div className="text-[9px] text-slate-500 tracking-wide">Step by Step Investigation Roadmap</div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Relation legend */}
-          <div className="hidden lg:flex items-center gap-3 border-r border-white/8 pr-3">
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-px bg-cyan-400/80" /><span className="text-[8px] text-slate-400">Direct</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-px border-t border-dashed border-slate-400/70" /><span className="text-[8px] text-slate-400">Indirect</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-px border-t-2 border-dashed border-red-500/80" style={{ boxShadow: "0 0 4px rgba(239,68,68,0.4)" }} />
-              <span className="text-[8px] text-slate-400">Suspicious</span>
-            </div>
-          </div>
+          {/* Upload button */}
+          <button onClick={() => setShowUpload(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-cyan-500/50 bg-cyan-950/40 px-3 py-1.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all"
+            style={{ boxShadow: "0 0 16px rgba(34,211,238,0.15)" }}
+          >
+            {isSimulating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+            Add CCTV & Log Data
+          </button>
 
-          {/* Playback controls */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => { setPlaying(p => !p); }}
-              className="flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-900/30 px-2.5 py-1 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-900/50 transition-colors"
-            >
-              {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-              {playing ? "Pause" : "Auto Play"}
-            </button>
-            <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-slate-900/60 px-1 py-1">
-              {[0.5, 1, 2].map(s => (
-                <button key={s} onClick={() => setSpeed(s)}
-                  className={`rounded px-2 py-0.5 text-[9px] font-bold transition-colors ${speed === s ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}>
-                  {s}x
+          {dataLoaded && (
+            <>
+              <div className="hidden lg:flex items-center gap-3 border-r border-white/8 pr-3">
+                <div className="flex items-center gap-1"><div className="w-6 h-px bg-cyan-400/80" /><span className="text-[8px] text-slate-400">Direct</span></div>
+                <div className="flex items-center gap-1"><div className="w-6 h-px border-t border-dashed border-slate-400/70" /><span className="text-[8px] text-slate-400">Indirect</span></div>
+                <div className="flex items-center gap-1"><div className="w-6 h-px border-t-2 border-dashed border-red-500/80" style={{ boxShadow: "0 0 4px rgba(239,68,68,0.4)" }} /><span className="text-[8px] text-slate-400">Suspicious</span></div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setPlaying(p => !p)}
+                  className="flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-900/30 px-2.5 py-1 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-900/50 transition-colors">
+                  {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                  {playing ? "Pause" : "Auto Play"}
                 </button>
-              ))}
-            </div>
-            <button onClick={() => { setCurrent(s => Math.max(s - 1, 0)); setPlaying(false); }}
-              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => { setCurrent(s => Math.min(s + 1, steps.length - 1)); setPlaying(false); }}
-              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+                <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-slate-900/60 px-1 py-1">
+                  {[0.5, 1, 2].map(s => (
+                    <button key={s} onClick={() => setSpeed(s)}
+                      className={`rounded px-2 py-0.5 text-[9px] font-bold transition-colors ${speed === s ? "bg-cyan-500/20 text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}>
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => { setCurrent(s => Math.max(s - 1, 0)); setPlaying(false); }}
+                  className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => { setCurrent(s => Math.min(s + 1, steps.length - 1)); setPlaying(false); }}
+                  className="grid h-7 w-7 place-items-center rounded-md border border-white/10 hover:bg-white/8 text-slate-400 transition-colors">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── Column Headers ── */}
-      <div className="grid shrink-0 border-b border-white/6 bg-slate-950/40"
-        style={{ gridTemplateColumns: "44px 58px 190px 1fr 195px" }}>
-        {["STEP", "TIME", "EVENT", "GRAPH STATE (EVIDENCE ADDED STEP BY STEP)", "AI INSIGHT / IMPACT"].map(h => (
-          <div key={h} className="px-2 py-1.5 text-[8px] font-bold uppercase tracking-widest text-slate-600 border-r border-white/5 last:border-r-0">
-            {h}
-          </div>
-        ))}
-      </div>
+      {/* Column Headers */}
+      {dataLoaded && (
+        <div className="grid shrink-0 border-b border-white/6 bg-slate-950/40"
+          style={{ gridTemplateColumns: "44px 58px 190px 1fr 195px" }}>
+          {["STEP","TIME","EVENT","GRAPH STATE (EVIDENCE ADDED STEP BY STEP)","AI INSIGHT / IMPACT"].map(h => (
+            <div key={h} className="px-2 py-1.5 text-[8px] font-bold uppercase tracking-widest text-slate-600 border-r border-white/5 last:border-r-0">{h}</div>
+          ))}
+        </div>
+      )}
 
-      {/* ── Rows ── */}
-      <div ref={bodyRef} className="flex-1 overflow-y-auto">
-        {steps.map((s, i) => {
+      {/* Rows */}
+      <div ref={bodyRef} className="flex-1 overflow-y-auto relative">
+        {!dataLoaded ? (
+          /* Empty state */
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-cyan-500/20 bg-slate-950/60 px-10 py-8 text-center"
+              style={{ boxShadow: "0 0 40px rgba(34,211,238,0.06)" }}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-950/50"
+                style={{ boxShadow: "0 0 20px rgba(34,211,238,0.15)" }}>
+                <Camera className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <div className="text-[12px] font-black uppercase tracking-[0.18em] text-cyan-400">Upload CCTV & Log Data</div>
+                <div className="mt-1.5 text-[10px] text-slate-500 max-w-[260px] leading-relaxed">
+                  Upload CCTV footage and investigation logs to generate the 18-step timeline reconstruction
+                </div>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5 mt-1">
+                {["CCTV timestamps","GPS traces","Phone pings","Forensic logs","Witness statements"].map(f => (
+                  <span key={f} className="rounded-full border border-cyan-500/20 bg-cyan-950/30 px-2 py-0.5 text-[8px] text-cyan-500/70 uppercase tracking-wider">{f}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : steps.map((s, i) => {
           const ec = EVENT_COLORS[s.eventType];
           const isActive = i === current;
           const isPast = i < current;
@@ -730,6 +839,9 @@ export function TimelineReplay() {
             <motion.div
               key={s.id}
               ref={el => { rowRefs.current[i] = el; }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.04 }}
               onClick={() => { setCurrent(i); setPlaying(false); }}
               className={[
                 "grid cursor-pointer border-b border-white/5 transition-all duration-200",
@@ -740,83 +852,54 @@ export function TimelineReplay() {
                     : "border-l-2 border-l-transparent hover:bg-white/2",
               ].join(" ")}
               style={{ gridTemplateColumns: "44px 58px 190px 1fr 195px" }}
-              animate={isActive ? { backgroundColor: "rgba(8,50,60,0.25)" } : {}}
             >
-              {/* Step # */}
               <div className="flex items-start justify-center pt-2.5 px-1 border-r border-white/5">
                 <StepBadge number={s.id} eventType={s.eventType} active={isActive} past={isPast} />
               </div>
-
-              {/* Time */}
               <div className="flex items-start pt-2.5 px-2 border-r border-white/5">
-                <span className={`font-mono text-[11px] font-bold ${isActive ? ec.text : isPast ? "text-slate-600" : "text-slate-500"}`}>
-                  {s.time}
-                </span>
+                <span className={`font-mono text-[11px] font-bold ${isActive ? ec.text : isPast ? "text-slate-600" : "text-slate-500"}`}>{s.time}</span>
               </div>
-
-              {/* Event */}
               <div className="flex flex-col justify-start px-2 py-2 border-r border-white/5 min-w-0">
-                <div className={`text-[11px] font-semibold leading-tight mb-0.5 ${isActive ? "text-white" : isPast ? "text-slate-500" : "text-slate-400"}`}>
-                  {s.title}
-                </div>
-                <div className={`text-[9px] leading-snug mb-1 ${isActive ? "text-slate-400" : "text-slate-600"} line-clamp-2`}>
-                  {s.description}
-                </div>
+                <div className={`text-[11px] font-semibold leading-tight mb-0.5 ${isActive ? "text-white" : isPast ? "text-slate-500" : "text-slate-400"}`}>{s.title}</div>
+                <div className={`text-[9px] leading-snug mb-1 ${isActive ? "text-slate-400" : "text-slate-600"} line-clamp-2`}>{s.description}</div>
                 <div className={`flex items-center gap-1 ${isActive ? ec.text : "text-slate-600"}`}>
                   <TypeIcon type={s.eventType} className="h-2.5 w-2.5" />
                   <span className="text-[8px] capitalize font-medium">{s.eventType}</span>
                 </div>
               </div>
-
-              {/* Center: mini graph */}
               <div className="flex items-center px-3 py-2 min-w-0 border-r border-white/5 overflow-hidden">
                 <AnimatePresence mode="wait">
                   {isActive ? (
-                    <motion.div
-                      key="active"
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="w-full"
-                    >
+                    <motion.div key="active" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="w-full">
                       <CenterCell step={s} />
                     </motion.div>
                   ) : (
-                    <motion.div key="inactive" className="w-full opacity-40">
-                      <CenterCell step={s} />
-                    </motion.div>
+                    <motion.div key="inactive" className="w-full opacity-40"><CenterCell step={s} /></motion.div>
                   )}
                 </AnimatePresence>
               </div>
-
-              {/* Right: AI Insight */}
-              <div className="px-2 py-2">
-                <InsightCell step={s} />
-              </div>
+              <div className="px-2 py-2"><InsightCell step={s} /></div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* ── Progress Bar ── */}
-      <div className="shrink-0 border-t border-white/6 px-4 py-1.5 flex items-center gap-3 bg-slate-950/50">
-        <span className="font-mono text-[9px] text-slate-600">Step {current + 1} / {steps.length}</span>
-        <div className="flex-1 h-1 bg-slate-900 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500"
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.35 }}
-          />
+      {/* Progress Bar */}
+      {dataLoaded && (
+        <div className="shrink-0 border-t border-white/6 px-4 py-1.5 flex items-center gap-3 bg-slate-950/50">
+          <span className="font-mono text-[9px] text-slate-600">Step {current + 1} / {steps.length}</span>
+          <div className="flex-1 h-1 bg-slate-900 rounded-full overflow-hidden">
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500"
+              animate={{ width: `${progress}%` }} transition={{ duration: 0.35 }} />
+          </div>
+          <span className="font-mono text-[9px] text-slate-500">{step.time}</span>
+          <span className={`font-mono text-[9px] font-semibold ${step.severity === "critical" ? "text-red-400" : step.severity === "suspicious" ? "text-orange-400" : "text-emerald-400"}`}>
+            {step.severity.toUpperCase()}
+          </span>
         </div>
-        <span className="font-mono text-[9px] text-slate-500">{step.time}</span>
-        <span className={`font-mono text-[9px] font-semibold ${
-          step.severity === "critical" ? "text-red-400" :
-          step.severity === "suspicious" ? "text-orange-400" : "text-emerald-400"
-        }`}>{step.severity.toUpperCase()}</span>
-      </div>
+      )}
 
-      {/* ── Bottom Legend ── */}
+      {/* Bottom Legend */}
       <div className="shrink-0 border-t border-white/5 px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-1 bg-slate-950/60">
         {BOTTOM_LEGEND.map(item => (
           <div key={item.label} className="flex items-center gap-1">
@@ -825,6 +908,14 @@ export function TimelineReplay() {
           </div>
         ))}
       </div>
+
+      {/* Overlays */}
+      <AnimatePresence>
+        {showUpload && !isSimulating && <UploadModal key="upload" onFile={handleFile} onClose={() => setShowUpload(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isSimulating && <SimOverlay key="sim" phase={simPhase} fileName={fileName} progress={simProgress} onDismiss={handleDismiss} />}
+      </AnimatePresence>
     </div>
   );
 }
