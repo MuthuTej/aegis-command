@@ -7,7 +7,7 @@ import { TimelineReplay } from "@/components/aegis/TimelineReplay";
 import { MovementMap } from "@/components/aegis/MovementMap";
 import { AutopsyPanel } from "@/components/aegis/AutopsyPanel";
 import { Copilot } from "@/components/aegis/Copilot";
-import { WhatIfPanel } from "@/components/aegis/WhatIfPanel";
+// import { WhatIfPanel } from "@/components/aegis/WhatIfPanel";
 import { cases, similarCases, evidenceVault } from "@/data/data";
 import { ChevronLeft, GitBranch, Layers, ShieldAlert } from "lucide-react";
 import { useState } from "react";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/cases/$caseId")({
 function CaseWorkspace() {
   const { caseId } = Route.useParams();
   const c = cases.find((x) => x.id === caseId) ?? cases[0];
-  const [tab, setTab] = useState<"graph" | "timeline" | "autopsy" | "movement">("graph");
+  const [tab, setTab] = useState<  "timeline" | "autopsy" | "movement " | "graph">("autopsy");
 
   return (
     <Shell>
@@ -64,10 +64,10 @@ function CaseWorkspace() {
         {/* Tabs */}
         <div className="flex flex-wrap items-center gap-1">
           {([
-            { id: "graph",    label: "Living Evidence Canvas", icon: GitBranch },
+            { id: "autopsy",  label: "Forensic Body",          icon: Layers },
             { id: "timeline", label: "Timeline Replay",        icon: Layers },
             { id: "movement", label: "Movement Map",           icon: Layers },
-            { id: "autopsy",  label: "Forensic Body",          icon: Layers },
+            { id: "graph",    label: "Living Evidence Canvas", icon: GitBranch },
           ] as const).map((t) => (
             <button
               key={t.id}
@@ -162,7 +162,7 @@ function CaseWorkspace() {
           <aside className="space-y-4">
             <HypothesisPanel />
             <ContradictionPanel />
-            <WhatIfPanel baseConf={c.aiConfidence} baseContra={c.contradictions} />
+            {/* <WhatIfPanel baseConf={c.aiConfidence} baseContra={c.contradictions} /> */}
           </aside>
         </div>
       </div>
